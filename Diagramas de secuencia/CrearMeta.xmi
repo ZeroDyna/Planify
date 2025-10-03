@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xmi:XMI xmi:version="2.1" xmlns:uml="http://schema.omg.org/spec/UML/2.0" xmlns:xmi="http://schema.omg.org/spec/XMI/2.1">
+	<xmi:Documentation exporter="StarUML" exporterVersion="2.0"/>
+	<uml:Model xmi:id="AAAAAAGZqB/LN2LHMwE=" xmi:type="uml:Model" name="RootModel">
+		<packagedElement xmi:id="AAAAAAFF+qBWK6M3Z8Y=" name="Model" visibility="public" xmi:type="uml:Model">
+			<packagedElement xmi:id="AAAAAAGZmLCT2V/UUl4=" name="Collaboration1" visibility="public" isAbstract="false" isFinalSpecialization="false" isLeaf="false" xmi:type="uml:Collaboration">
+				<ownedMember xmi:id="AAAAAAGZmLCT2l/VfF0=" name="validar" visibility="public" isReentrant="false" xmi:type="uml:Interaction">
+					<ownedMember xmi:id="AAAAAAGZomU4nCONcRA=" name="Usuario" visibility="public" isAbstract="false" isFinalSpecialization="false" isLeaf="false" xmi:type="uml:Actor"/>
+					<xmi:Extension extender="StarUML">
+						<stereotype value="alt"/>
+					</xmi:Extension>
+					<lifeline xmi:id="AAAAAAGZmRLN6WAEFqs=" name="MetasUI" visibility="public" xmi:type="uml:Lifeline" represents="AAAAAAGZmRLN6WADOfo="/>
+					<lifeline xmi:id="AAAAAAGZmTtuRWBz4/g=" name=":Metas" visibility="public" xmi:type="uml:Lifeline" represents="AAAAAAGZmTtuRWByGCQ="/>
+					<lifeline xmi:id="AAAAAAGZmT6Rg2C28I4=" name="GestorMetas" visibility="public" xmi:type="uml:Lifeline" represents="AAAAAAGZmT6Rg2C1wK0="/>
+					<lifeline xmi:id="AAAAAAGZmUUg+mFGj80=" name=":Tablas" visibility="public" xmi:type="uml:Lifeline" represents="AAAAAAGZmUUg+mFF3gM="/>
+					<lifeline xmi:id="AAAAAAGZomWBGyO5EWA=" visibility="public" xmi:type="uml:Lifeline" represents="AAAAAAGZomWBGyO43js=">
+						<xmi:Extension extender="StarUML">
+							<stereotype value=""/>
+						</xmi:Extension>
+					</lifeline>
+					<lifeline xmi:id="AAAAAAGZpz6x9F9QZEk=" name="InterfazDailyInput" visibility="public" xmi:type="uml:Lifeline" represents="AAAAAAGZpz6x9F9PaIQ="/>
+					<message xmi:id="AAAAAAGZmShdmmAtqpI=" name="Selecciona%20%22Editar%22" visibility="public" xmi:type="uml:Message" messageSort="asynchCall" messageKind="complete" receiveEvent="AAAAAAGZqB/LOWLJ97g=" sendEvent="AAAAAAGZqB/LOWLI834=">
+						<argument xmi:id="AAAAAAGZqB/LOWLK4n8=" xmi:type="uml:LiteralString" value="%20"/>
+					</message>
+					<message xmi:id="AAAAAAGZp0DPWF+ierI=" name="Navega%20a%20DailyInput" visibility="public" xmi:type="uml:Message" messageSort="asynchCall" messageKind="complete" receiveEvent="AAAAAAGZqB/LOWLMte0=" sendEvent="AAAAAAGZqB/LOWLLVJo="/>
+					<message xmi:id="AAAAAAGZp07+Rl+6Glg=" name="Mostrar%20formulario%20de%20meta" visibility="public" xmi:type="uml:Message" messageSort="synchCall" messageKind="complete" receiveEvent="AAAAAAGZqB/LOWLOZ8E=" sendEvent="AAAAAAGZqB/LOWLNBE4="/>
+					<message xmi:id="AAAAAAGZmTqq/GBcGvg=" name="IngresarDatos" visibility="public" xmi:type="uml:Message" messageSort="asynchCall" messageKind="complete" receiveEvent="AAAAAAGZqB/LOWLQDZk=" sendEvent="AAAAAAGZqB/LOWLPI48=">
+						<argument xmi:id="AAAAAAGZqB/LOWLR0N8=" xmi:type="uml:LiteralString" value="monto,periodo"/>
+					</message>
+					<message xmi:id="AAAAAAGZp1Z2ZWAqD80=" name="CrearMeta" visibility="public" xmi:type="uml:Message" messageSort="synchCall" messageKind="complete" receiveEvent="AAAAAAGZqB/LOmLT+Y8=" sendEvent="AAAAAAGZqB/LOWLSxBY=">
+						<argument xmi:id="AAAAAAGZqB/LOmLUMnU=" xmi:type="uml:LiteralString" value="monto,%20periodo"/>
+						<xmi:Extension extender="StarUML">
+							<assignmentTarget value="goal"/>
+						</xmi:Extension>
+					</message>
+					<message xmi:id="AAAAAAGZp2LDCGEEMrM=" name="goal" visibility="public" xmi:type="uml:Message" messageSort="synchCall" messageKind="complete" receiveEvent="AAAAAAGZqB/LOmLWfVQ=" sendEvent="AAAAAAGZqB/LOmLVrMI=">
+						<argument xmi:id="AAAAAAGZqB/LOmLXGe4=" xmi:type="uml:LiteralString" value="%20"/>
+					</message>
+					<message xmi:id="AAAAAAGZp2YNTmGtyDM=" name="validar" visibility="public" xmi:type="uml:Message" messageSort="synchCall" messageKind="complete" receiveEvent="AAAAAAGZqB/LOmLZHoE=" sendEvent="AAAAAAGZqB/LOmLYLu0="/>
+					<message xmi:id="AAAAAAGZp2QQDWFJpAQ=" name="Guardar" visibility="public" xmi:type="uml:Message" messageSort="synchCall" messageKind="complete" receiveEvent="AAAAAAGZqB/LOmLbu6s=" sendEvent="AAAAAAGZqB/LOmLagLs=">
+						<argument xmi:id="AAAAAAGZqB/LOmLcG2Q=" xmi:type="uml:LiteralString" value="goal"/>
+					</message>
+					<message xmi:id="AAAAAAGZp2Y8xWHDti0=" visibility="public" xmi:type="uml:Message" messageSort="reply" messageKind="complete" receiveEvent="AAAAAAGZqB/LOmLe4js=" sendEvent="AAAAAAGZqB/LOmLdZQ4="/>
+					<message xmi:id="AAAAAAGZp2aZOmHYnoc=" name="Meta%20creada" visibility="public" xmi:type="uml:Message" messageSort="reply" messageKind="complete" receiveEvent="AAAAAAGZqB/LOmLg5OA=" sendEvent="AAAAAAGZqB/LOmLfxfw="/>
+					<message xmi:id="AAAAAAGZp2bk+2HuoVA=" name="Navega%20a%20MetasUI" visibility="public" xmi:type="uml:Message" messageSort="synchCall" messageKind="complete" receiveEvent="AAAAAAGZqB/LOmLiD9Q=" sendEvent="AAAAAAGZqB/LOmLhA2o="/>
+					<message xmi:id="AAAAAAGZp2fxH2IH1WI=" name="Error" visibility="public" xmi:type="uml:Message" messageSort="reply" messageKind="complete" receiveEvent="AAAAAAGZqB/LOmLkamI=" sendEvent="AAAAAAGZqB/LOmLjWnw="/>
+					<message xmi:id="AAAAAAGZp2ibt2I9HSE=" name="mensaje%20de%20error" visibility="public" xmi:type="uml:Message" messageSort="synchCall" messageKind="complete" receiveEvent="AAAAAAGZqB/LOmLmMHA=" sendEvent="AAAAAAGZqB/LOmLltzI="/>
+					<fragment xmi:id="AAAAAAGZqB/LOWLI834=" xmi:type="uml:OccurrenceSpecification" covered="AAAAAAGZomWBGyO5EWA="/>
+					<fragment xmi:id="AAAAAAGZqB/LOWLJ97g=" xmi:type="uml:OccurrenceSpecification" covered="AAAAAAGZmRLN6WAEFqs="/>
+					<fragment xmi:id="AAAAAAGZqB/LOWLLVJo=" xmi:type="uml:OccurrenceSpecification" covered="AAAAAAGZmRLN6WAEFqs="/>
+					<fragment xmi:id="AAAAAAGZqB/LOWLMte0=" xmi:type="uml:OccurrenceSpecification" covered="AAAAAAGZpz6x9F9QZEk="/>
+					<fragment xmi:id="AAAAAAGZqB/LOWLNBE4=" xmi:type="uml:OccurrenceSpecification" covered="AAAAAAGZpz6x9F9QZEk="/>
+					<fragment xmi:id="AAAAAAGZqB/LOWLOZ8E=" xmi:type="uml:OccurrenceSpecification" covered="AAAAAAGZpz6x9F9QZEk="/>
+					<fragment xmi:id="AAAAAAGZqB/LOWLPI48=" xmi:type="uml:OccurrenceSpecification" covered="AAAAAAGZomWBGyO5EWA="/>
+					<fragment xmi:id="AAAAAAGZqB/LOWLQDZk=" xmi:type="uml:OccurrenceSpecification" covered="AAAAAAGZpz6x9F9QZEk="/>
+					<fragment xmi:id="AAAAAAGZqB/LOWLSxBY=" xmi:type="uml:OccurrenceSpecification" covered="AAAAAAGZpz6x9F9QZEk="/>
+					<fragment xmi:id="AAAAAAGZqB/LOmLT+Y8=" xmi:type="uml:OccurrenceSpecification" covered="AAAAAAGZmT6Rg2C28I4="/>
+					<fragment xmi:id="AAAAAAGZqB/LOmLVrMI=" xmi:type="uml:OccurrenceSpecification" covered="AAAAAAGZmT6Rg2C28I4="/>
+					<fragment xmi:id="AAAAAAGZqB/LOmLWfVQ=" xmi:type="uml:OccurrenceSpecification" covered="AAAAAAGZmTtuRWBz4/g="/>
+					<fragment xmi:id="AAAAAAGZqB/LOmLYLu0=" xmi:type="uml:OccurrenceSpecification" covered="AAAAAAGZmT6Rg2C28I4="/>
+					<fragment xmi:id="AAAAAAGZqB/LOmLZHoE=" xmi:type="uml:OccurrenceSpecification" covered="AAAAAAGZmTtuRWBz4/g="/>
+					<fragment xmi:id="AAAAAAGZqB/LOmLagLs=" xmi:type="uml:OccurrenceSpecification" covered="AAAAAAGZmT6Rg2C28I4="/>
+					<fragment xmi:id="AAAAAAGZqB/LOmLbu6s=" xmi:type="uml:OccurrenceSpecification" covered="AAAAAAGZmUUg+mFGj80="/>
+					<fragment xmi:id="AAAAAAGZqB/LOmLdZQ4=" xmi:type="uml:OccurrenceSpecification" covered="AAAAAAGZmUUg+mFGj80="/>
+					<fragment xmi:id="AAAAAAGZqB/LOmLe4js=" xmi:type="uml:OccurrenceSpecification" covered="AAAAAAGZmT6Rg2C28I4="/>
+					<fragment xmi:id="AAAAAAGZqB/LOmLfxfw=" xmi:type="uml:OccurrenceSpecification" covered="AAAAAAGZmT6Rg2C28I4="/>
+					<fragment xmi:id="AAAAAAGZqB/LOmLg5OA=" xmi:type="uml:OccurrenceSpecification" covered="AAAAAAGZpz6x9F9QZEk="/>
+					<fragment xmi:id="AAAAAAGZqB/LOmLhA2o=" xmi:type="uml:OccurrenceSpecification" covered="AAAAAAGZpz6x9F9QZEk="/>
+					<fragment xmi:id="AAAAAAGZqB/LOmLiD9Q=" xmi:type="uml:OccurrenceSpecification" covered="AAAAAAGZmRLN6WAEFqs="/>
+					<fragment xmi:id="AAAAAAGZqB/LOmLjWnw=" xmi:type="uml:OccurrenceSpecification" covered="AAAAAAGZmT6Rg2C28I4="/>
+					<fragment xmi:id="AAAAAAGZqB/LOmLkamI=" xmi:type="uml:OccurrenceSpecification" covered="AAAAAAGZpz6x9F9QZEk="/>
+					<fragment xmi:id="AAAAAAGZqB/LOmLltzI=" xmi:type="uml:OccurrenceSpecification" covered="AAAAAAGZpz6x9F9QZEk="/>
+					<fragment xmi:id="AAAAAAGZqB/LOmLmMHA=" xmi:type="uml:OccurrenceSpecification" covered="AAAAAAGZpz6x9F9QZEk="/>
+					<fragment xmi:id="AAAAAAGZp2wBXWKUbN0=" name="validar%20datos" visibility="public" isReentrant="true" xmi:type="uml:CombinedFragment" interactionOperator="alt">
+						<operand xmi:id="AAAAAAGZp2wBXWKVmqA=" name="validar" visibility="public" isReentrant="true" xmi:type="uml:InteractionOperand">
+							<guard xmi:id="AAAAAAGZqB/LOmLnPkw=" xmi:type="uml:Constraint" specification="validar"/>
+						</operand>
+						<operand xmi:id="AAAAAAGZp23Pd2Kx7Ck=" name="!validar" visibility="public" isReentrant="true" xmi:type="uml:InteractionOperand">
+							<guard xmi:id="AAAAAAGZqB/LO2LoR68=" xmi:type="uml:Constraint" specification="!validar"/>
+						</operand>
+					</fragment>
+				</ownedMember>
+				<ownedAttribute xmi:id="AAAAAAGZmLIQLl/jpSo=" name="Role1" visibility="public" isStatic="false" isLeaf="false" isReadOnly="false" isOrdered="false" isUnique="false" xmi:type="uml:Property" aggregation="none" isDerived="false" isID="false"/>
+				<ownedAttribute xmi:id="AAAAAAGZmRLN6WADOfo=" name="Role2" visibility="public" isStatic="false" isLeaf="false" isReadOnly="false" isOrdered="false" isUnique="false" xmi:type="uml:Property" aggregation="none" isDerived="false" isID="false"/>
+				<ownedAttribute xmi:id="AAAAAAGZmTtuRWByGCQ=" name="Role3" visibility="public" isStatic="false" isLeaf="false" isReadOnly="false" isOrdered="false" isUnique="false" xmi:type="uml:Property" aggregation="none" isDerived="false" isID="false"/>
+				<ownedAttribute xmi:id="AAAAAAGZmT6Rg2C1wK0=" name="Role4" visibility="public" isStatic="false" isLeaf="false" isReadOnly="false" isOrdered="false" isUnique="false" xmi:type="uml:Property" aggregation="none" isDerived="false" isID="false"/>
+				<ownedAttribute xmi:id="AAAAAAGZmUUg+mFF3gM=" name="Role5" visibility="public" isStatic="false" isLeaf="false" isReadOnly="false" isOrdered="false" isUnique="false" xmi:type="uml:Property" aggregation="none" isDerived="false" isID="false"/>
+				<ownedAttribute xmi:id="AAAAAAGZomWBGyO43js=" name="Role6" visibility="public" isStatic="false" isLeaf="false" type="AAAAAAGZomU4nCONcRA=" isReadOnly="false" isOrdered="false" isUnique="false" xmi:type="uml:Property" aggregation="none" isDerived="false" isID="false"/>
+				<ownedAttribute xmi:id="AAAAAAGZpz6x9F9PaIQ=" name="Role7" visibility="public" isStatic="false" isLeaf="false" isReadOnly="false" isOrdered="false" isUnique="false" xmi:type="uml:Property" aggregation="none" isDerived="false" isID="false"/>
+			</packagedElement>
+		</packagedElement>
+		<packagedElement xmi:id="AAAAAAGZomUhoyOIraI=" name="Model1" visibility="public" xmi:type="uml:Model"/>
+	</uml:Model>
+</xmi:XMI>
