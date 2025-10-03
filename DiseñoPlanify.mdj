@@ -19732,9 +19732,9 @@
 													},
 													"font": "Arial;13;0",
 													"parentStyle": true,
-													"left": 22.55908203125,
+													"left": 24.72998046875,
 													"top": 5,
-													"width": 95.66552734375,
+													"width": 106.22802734375,
 													"height": 13,
 													"text": "Consultar Balance"
 												},
@@ -19748,7 +19748,7 @@
 													"parentStyle": true,
 													"left": 5,
 													"top": 5,
-													"width": 11.55908203125,
+													"width": 13.72998046875,
 													"height": 13,
 													"text": "sd"
 												}
@@ -19809,7 +19809,7 @@
 															"top": 47,
 															"width": 127.32080078125,
 															"height": 13,
-															"text": "IBalance-Resumen"
+															"text": "I͟B͟a͟l͟a͟n͟c͟e͟-͟R͟e͟s͟u͟m͟e͟n͟"
 														},
 														{
 															"_type": "LabelView",
@@ -19935,7 +19935,7 @@
 															"top": 47,
 															"width": 106.37353515625,
 															"height": 13,
-															"text": "Gestor Balance"
+															"text": "G͟e͟s͟t͟o͟r͟ ͟B͟a͟l͟a͟n͟c͟e͟"
 														},
 														{
 															"_type": "LabelView",
@@ -20061,7 +20061,7 @@
 															"top": 47,
 															"width": 135.24267578125,
 															"height": 13,
-															"text": "ProcesadorBalance"
+															"text": "P͟r͟o͟c͟e͟s͟a͟d͟o͟r͟B͟a͟l͟a͟n͟c͟e͟"
 														},
 														{
 															"_type": "LabelView",
@@ -20185,9 +20185,9 @@
 															"parentStyle": true,
 															"left": 621,
 															"top": 47,
-															"width": 120.55419921875,
+															"width": 121.51904296875,
 															"height": 13,
-															"text": "Tabla movimiento"
+															"text": "T͟a͟b͟l͟a͟ ͟m͟o͟v͟i͟m͟i͟e͟n͟t͟o͟"
 														},
 														{
 															"_type": "LabelView",
@@ -20223,7 +20223,7 @@
 													"parentStyle": true,
 													"left": 616,
 													"top": 40,
-													"width": 130.55419921875,
+													"width": 131.51904296875,
 													"height": 40,
 													"stereotypeLabel": {
 														"$ref": "AAAAAAGZj7XD3uF3BL0="
@@ -20259,7 +20259,7 @@
 											"parentStyle": false,
 											"left": 616,
 											"top": 40,
-											"width": 129.55419921875,
+											"width": 130.51904296875,
 											"height": 560,
 											"nameCompartment": {
 												"$ref": "AAAAAAGZj7XD3uF2wRs="
@@ -20313,7 +20313,7 @@
 															"top": 87,
 															"width": 118.01904296875,
 															"height": 13,
-															"text": "s: Usuario"
+															"text": "AC: Usuario"
 														},
 														{
 															"_type": "LabelView",
@@ -21228,9 +21228,9 @@
 													},
 													"font": "Arial;13;0",
 													"parentStyle": true,
-													"left": 43.61181640625,
+													"left": 45.07177734375,
 													"top": 365,
-													"width": 157.751953125,
+													"width": 174.88427734375,
 													"height": 13,
 													"text": "Usuario selecciona un periodo"
 												},
@@ -21244,7 +21244,7 @@
 													"parentStyle": true,
 													"left": 21,
 													"top": 365,
-													"width": 16.61181640625,
+													"width": 18.07177734375,
 													"height": 13,
 													"text": "opt"
 												},
@@ -22354,7 +22354,7 @@
 									"_parent": {
 										"$ref": "AAAAAAGZj7AZduC+ygk="
 									},
-									"name": "IBalance-Resumen",
+									"name": "I͟B͟a͟l͟a͟n͟c͟e͟-͟R͟e͟s͟u͟m͟e͟n͟",
 									"represent": {
 										"$ref": "AAAAAAGZj7BGgODrOOk="
 									},
@@ -22366,7 +22366,7 @@
 									"_parent": {
 										"$ref": "AAAAAAGZj7AZduC+ygk="
 									},
-									"name": "Gestor Balance",
+									"name": "G͟e͟s͟t͟o͟r͟ ͟B͟a͟l͟a͟n͟c͟e͟",
 									"represent": {
 										"$ref": "AAAAAAGZj7GMoOEUJwY="
 									},
@@ -22378,7 +22378,7 @@
 									"_parent": {
 										"$ref": "AAAAAAGZj7AZduC+ygk="
 									},
-									"name": "ProcesadorBalance",
+									"name": "P͟r͟o͟c͟e͟s͟a͟d͟o͟r͟B͟a͟l͟a͟n͟c͟e͟",
 									"represent": {
 										"$ref": "AAAAAAGZj7W+C+FUD4w="
 									},
@@ -22390,7 +22390,7 @@
 									"_parent": {
 										"$ref": "AAAAAAGZj7AZduC+ygk="
 									},
-									"name": "Tabla movimiento",
+									"name": "T͟a͟b͟l͟a͟ ͟m͟o͟v͟i͟m͟i͟e͟n͟t͟o͟",
 									"represent": {
 										"$ref": "AAAAAAGZj7XD3uFzFm4="
 									},
@@ -22402,7 +22402,7 @@
 									"_parent": {
 										"$ref": "AAAAAAGZj7AZduC+ygk="
 									},
-									"name": "s",
+									"name": "AC",
 									"represent": {
 										"$ref": "AAAAAAGZj7e1neHAyFs="
 									},
@@ -22465,9 +22465,9 @@
 													},
 													"font": "Arial;13;0",
 													"parentStyle": true,
-													"left": 30.55908203125,
+													"left": 32.72998046875,
 													"top": 5,
-													"width": 86.25830078125,
+													"width": 97.55078125,
 													"height": 13,
 													"text": "Generar Reporte"
 												},
@@ -22481,7 +22481,7 @@
 													"parentStyle": true,
 													"left": 13,
 													"top": 5,
-													"width": 11.55908203125,
+													"width": 13.72998046875,
 													"height": 13,
 													"text": "sd"
 												}
@@ -22542,7 +22542,7 @@
 															"top": 47,
 															"width": 127.32080078125,
 															"height": 13,
-															"text": "IBalance-Resumen"
+															"text": "I͟B͟a͟l͟a͟n͟c͟e͟-͟R͟e͟s͟u͟m͟e͟n͟"
 														},
 														{
 															"_type": "LabelView",
@@ -22789,7 +22789,7 @@
 															"top": 47,
 															"width": 143.1708984375,
 															"height": 13,
-															"text": "Controlador-Exportar"
+															"text": "C͟o͟n͟t͟r͟o͟l͟a͟d͟o͟r͟-͟E͟x͟p͟o͟r͟t͟a͟r͟"
 														},
 														{
 															"_type": "LabelView",
@@ -22912,7 +22912,7 @@
 															"top": 47,
 															"width": 106.37353515625,
 															"height": 13,
-															"text": "Gestor Balance"
+															"text": "G͟e͟s͟t͟o͟r͟ ͟B͟a͟l͟a͟n͟c͟e͟"
 														},
 														{
 															"_type": "LabelView",
@@ -23035,7 +23035,7 @@
 															"top": 47,
 															"width": 63.736328125,
 															"height": 13,
-															"text": "Reporte"
+															"text": "R͟e͟p͟o͟r͟t͟e͟"
 														},
 														{
 															"_type": "LabelView",
@@ -23158,7 +23158,7 @@
 															"top": 47,
 															"width": 110.68994140625,
 															"height": 13,
-															"text": "IBalance-Report"
+															"text": "I͟B͟a͟l͟a͟n͟c͟e͟-͟R͟e͟p͟o͟r͟t͟"
 														},
 														{
 															"_type": "LabelView",
@@ -23371,9 +23371,9 @@
 													},
 													"font": "Arial;13;0",
 													"parentStyle": true,
-													"left": 456.92822265625,
+													"left": 457.6708984375,
 													"top": 277,
-													"width": 274.07177734375,
+													"width": 273.3291015625,
 													"height": 13,
 													"text": "(CU-08 Consultar Balance)"
 												},
@@ -23387,7 +23387,7 @@
 													"parentStyle": true,
 													"left": 421,
 													"top": 277,
-													"width": 14.42822265625,
+													"width": 15.1708984375,
 													"height": 13,
 													"text": "ref"
 												}
@@ -23889,9 +23889,9 @@
 													},
 													"font": "Arial;13;0",
 													"parentStyle": true,
-													"left": 51.61181640625,
+													"left": 53.07177734375,
 													"top": 533,
-													"width": 87.36279296875,
+													"width": 96.0908203125,
 													"height": 13,
 													"text": "exportarFormato"
 												},
@@ -23905,7 +23905,7 @@
 													"parentStyle": true,
 													"left": 29,
 													"top": 533,
-													"width": 16.61181640625,
+													"width": 18.07177734375,
 													"height": 13,
 													"text": "opt"
 												},
@@ -24593,7 +24593,7 @@
 									"_parent": {
 										"$ref": "AAAAAAGZl5EGOLn4m48="
 									},
-									"name": "IBalance-Resumen",
+									"name": "I͟B͟a͟l͟a͟n͟c͟e͟-͟R͟e͟s͟u͟m͟e͟n͟",
 									"represent": {
 										"$ref": "AAAAAAGZlon1AboODaw="
 									},
@@ -24617,7 +24617,7 @@
 									"_parent": {
 										"$ref": "AAAAAAGZl5EGOLn4m48="
 									},
-									"name": "Controlador-Exportar",
+									"name": "C͟o͟n͟t͟r͟o͟l͟a͟d͟o͟r͟-͟E͟x͟p͟o͟r͟t͟a͟r͟",
 									"represent": {
 										"$ref": "AAAAAAGZloqzAbqEXkw="
 									},
@@ -24629,7 +24629,7 @@
 									"_parent": {
 										"$ref": "AAAAAAGZl5EGOLn4m48="
 									},
-									"name": "Gestor Balance",
+									"name": "G͟e͟s͟t͟o͟r͟ ͟B͟a͟l͟a͟n͟c͟e͟",
 									"represent": {
 										"$ref": "AAAAAAGZlosTvbqmh8E="
 									},
@@ -24641,7 +24641,7 @@
 									"_parent": {
 										"$ref": "AAAAAAGZl5EGOLn4m48="
 									},
-									"name": "Reporte",
+									"name": "R͟e͟p͟o͟r͟t͟e͟",
 									"represent": {
 										"$ref": "AAAAAAGZlp98WLr5Eh0="
 									},
@@ -24653,7 +24653,7 @@
 									"_parent": {
 										"$ref": "AAAAAAGZl5EGOLn4m48="
 									},
-									"name": "IBalance-Report",
+									"name": "I͟B͟a͟l͟a͟n͟c͟e͟-͟R͟e͟p͟o͟r͟t͟",
 									"represent": {
 										"$ref": "AAAAAAGZlp+hCbsdLco="
 									},
@@ -24726,9 +24726,9 @@
 													},
 													"font": "Arial;13;0",
 													"parentStyle": true,
-													"left": 22.55908203125,
+													"left": 24.72998046875,
 													"top": 5,
-													"width": 58.48095703125,
+													"width": 66.46630859375,
 													"height": 13,
 													"text": "Registrarse"
 												},
@@ -24742,7 +24742,7 @@
 													"parentStyle": true,
 													"left": 5,
 													"top": 5,
-													"width": 11.55908203125,
+													"width": 13.72998046875,
 													"height": 13,
 													"text": "sd"
 												}
@@ -27973,7 +27973,7 @@
 													"visible": false,
 													"font": "Arial;13;0",
 													"parentStyle": true,
-													"left": 71.99365234375,
+													"left": 72.72998046875,
 													"top": 221,
 													"height": 13
 												},
@@ -27987,7 +27987,7 @@
 													"parentStyle": true,
 													"left": 53,
 													"top": 221,
-													"width": 12.99365234375,
+													"width": 13.72998046875,
 													"height": 13,
 													"text": "alt"
 												},
@@ -28021,7 +28021,7 @@
 																	"parentStyle": true,
 																	"left": 68,
 																	"top": 254,
-																	"width": 148.001953125,
+																	"width": 164.7724609375,
 																	"height": 13,
 																	"text": "[Contrasaeñas no coinciden]"
 																}
@@ -28056,7 +28056,7 @@
 																	"parentStyle": true,
 																	"left": 68,
 																	"top": 327,
-																	"width": 125.98193359375,
+																	"width": 139.470703125,
 																	"height": 13,
 																	"text": "[Contraseñas coinciden]"
 																}
@@ -28522,9 +28522,9 @@
 													},
 													"font": "Arial;13;0",
 													"parentStyle": true,
-													"left": 38.55908203125,
+													"left": 40.72998046875,
 													"top": 5,
-													"width": 111.89013671875,
+													"width": 127.9052734375,
 													"height": 13,
 													"text": "RecuperarContraseña"
 												},
@@ -28538,7 +28538,7 @@
 													"parentStyle": true,
 													"left": 21,
 													"top": 5,
-													"width": 11.55908203125,
+													"width": 13.72998046875,
 													"height": 13,
 													"text": "sd"
 												}
@@ -30002,7 +30002,7 @@
 													"visible": false,
 													"font": "Arial;13;0",
 													"parentStyle": true,
-													"left": 151.99365234375,
+													"left": 152.72998046875,
 													"top": 333,
 													"height": 13
 												},
@@ -30016,7 +30016,7 @@
 													"parentStyle": true,
 													"left": 133,
 													"top": 333,
-													"width": 12.99365234375,
+													"width": 13.72998046875,
 													"height": 13,
 													"text": "alt"
 												},
@@ -30050,7 +30050,7 @@
 																	"parentStyle": true,
 																	"left": 148,
 																	"top": 366,
-																	"width": 24.5400390625,
+																	"width": 23.841796875,
 																	"height": 13,
 																	"text": "[val]"
 																}
@@ -30085,7 +30085,7 @@
 																	"parentStyle": true,
 																	"left": 148,
 																	"top": 855,
-																	"width": 28.869140625,
+																	"width": 27.45361328125,
 																	"height": 13,
 																	"text": "[!val]"
 																}
@@ -30260,7 +30260,7 @@
 													"visible": false,
 													"font": "Arial;13;0",
 													"parentStyle": true,
-													"left": 167.99365234375,
+													"left": 168.72998046875,
 													"top": 517,
 													"height": 13
 												},
@@ -30274,7 +30274,7 @@
 													"parentStyle": true,
 													"left": 149,
 													"top": 517,
-													"width": 12.99365234375,
+													"width": 13.72998046875,
 													"height": 13,
 													"text": "alt"
 												},
@@ -30308,7 +30308,7 @@
 																	"parentStyle": true,
 																	"left": 164,
 																	"top": 550,
-																	"width": 92.421875,
+																	"width": 98.26806640625,
 																	"height": 13,
 																	"text": "[CódigoCorrecto]"
 																}
@@ -30343,7 +30343,7 @@
 																	"parentStyle": true,
 																	"left": 164,
 																	"top": 687,
-																	"width": 100.35009765625,
+																	"width": 106.2216796875,
 																	"height": 13,
 																	"text": "[CódigoIncorrecto]"
 																}
@@ -31307,9 +31307,9 @@
 													},
 													"font": "Arial;13;0",
 													"parentStyle": true,
-													"left": 30.55908203125,
+													"left": 32.72998046875,
 													"top": 13,
-													"width": 68.5927734375,
+													"width": 74.42626953125,
 													"height": 13,
 													"text": "IniciarSesión"
 												},
@@ -31323,7 +31323,7 @@
 													"parentStyle": true,
 													"left": 13,
 													"top": 13,
-													"width": 11.55908203125,
+													"width": 13.72998046875,
 													"height": 13,
 													"text": "sd"
 												}
@@ -31968,7 +31968,7 @@
 													"visible": false,
 													"font": "Arial;13;0",
 													"parentStyle": true,
-													"left": 391.99365234375,
+													"left": 392.72998046875,
 													"top": 333,
 													"height": 13
 												},
@@ -31982,7 +31982,7 @@
 													"parentStyle": true,
 													"left": 373,
 													"top": 333,
-													"width": 12.99365234375,
+													"width": 13.72998046875,
 													"height": 13,
 													"text": "alt"
 												},
@@ -32016,7 +32016,7 @@
 																	"parentStyle": true,
 																	"left": 388,
 																	"top": 366,
-																	"width": 79.42822265625,
+																	"width": 83.82080078125,
 																	"height": 13,
 																	"text": "[DatosVálidos]"
 																}
@@ -32051,7 +32051,7 @@
 																	"parentStyle": true,
 																	"left": 388,
 																	"top": 503,
-																	"width": 87.369140625,
+																	"width": 92.49169921875,
 																	"height": 13,
 																	"text": "[DatosInválidos]"
 																}
@@ -32458,9 +32458,9 @@
 													},
 													"font": "Arial;13;0",
 													"parentStyle": true,
-													"left": 432.92822265625,
+													"left": 433.6708984375,
 													"top": 397,
-													"width": 170.01513671875,
+													"width": 169.2724609375,
 													"height": 13,
 													"text": ": ConsultarBalance"
 												},
@@ -32474,7 +32474,7 @@
 													"parentStyle": true,
 													"left": 397,
 													"top": 397,
-													"width": 14.42822265625,
+													"width": 15.1708984375,
 													"height": 13,
 													"text": "ref"
 												}
@@ -35587,9 +35587,9 @@
 													},
 													"font": "Arial;13;0",
 													"parentStyle": true,
-													"left": 57.55908203125,
+													"left": 59.72998046875,
 													"top": 13,
-													"width": 55.580078125,
+													"width": 61.4072265625,
 													"height": 13,
 													"text": "CrearMeta"
 												},
@@ -35603,7 +35603,7 @@
 													"parentStyle": true,
 													"left": 40,
 													"top": 13,
-													"width": 11.55908203125,
+													"width": 13.72998046875,
 													"height": 13,
 													"text": "sd"
 												}
@@ -37889,9 +37889,9 @@
 													},
 													"font": "Arial;13;0",
 													"parentStyle": true,
-													"left": 311.99365234375,
+													"left": 312.72998046875,
 													"top": 421,
-													"width": 66.78369140625,
+													"width": 73.708984375,
 													"height": 13,
 													"text": "validar datos"
 												},
@@ -37905,7 +37905,7 @@
 													"parentStyle": true,
 													"left": 293,
 													"top": 421,
-													"width": 12.99365234375,
+													"width": 13.72998046875,
 													"height": 13,
 													"text": "alt"
 												},
@@ -37939,7 +37939,7 @@
 																	"parentStyle": true,
 																	"left": 308,
 																	"top": 454,
-																	"width": 44.7509765625,
+																	"width": 45.51904296875,
 																	"height": 13,
 																	"text": "[validar]"
 																}
@@ -37974,7 +37974,7 @@
 																	"parentStyle": true,
 																	"left": 308,
 																	"top": 639,
-																	"width": 49.080078125,
+																	"width": 49.130859375,
 																	"height": 13,
 																	"text": "[!validar]"
 																}
@@ -38344,9 +38344,9 @@
 													},
 													"font": "Arial;13;0",
 													"parentStyle": true,
-													"left": 22.55908203125,
+													"left": 24.72998046875,
 													"top": 5,
-													"width": 123.48095703125,
+													"width": 137.287109375,
 													"height": 13,
 													"text": "ConsultarProgresoMeta"
 												},
@@ -38360,7 +38360,7 @@
 													"parentStyle": true,
 													"left": 5,
 													"top": 5,
-													"width": 11.55908203125,
+													"width": 13.72998046875,
 													"height": 13,
 													"text": "sd"
 												}
@@ -39991,9 +39991,9 @@
 													"parentStyle": true,
 													"left": 22.55908203125,
 													"top": 5,
-													"width": 58.474609375,
+													"width": 56.3037109375,
 													"height": 13,
-													"text": "EditarMeta"
+													"text": "editarMeta"
 												},
 												{
 													"_type": "LabelView",
@@ -42613,9 +42613,9 @@
 													"parentStyle": true,
 													"left": 22.55908203125,
 													"top": 5,
-													"width": 115.17822265625,
+													"width": 111.92822265625,
 													"height": 13,
-													"text": "Registrar Movimiento"
+													"text": "RegistrarMovimiento"
 												},
 												{
 													"_type": "LabelView",
@@ -44812,8 +44812,7 @@
 							"_parent": {
 								"$ref": "AAAAAAGZj7AZdOC9GWI="
 							},
-							"name": "Role2",
-							"type": ""
+							"name": "Role2"
 						},
 						{
 							"_type": "UMLAttribute",
@@ -44821,8 +44820,7 @@
 							"_parent": {
 								"$ref": "AAAAAAGZj7AZdOC9GWI="
 							},
-							"name": "Role3",
-							"type": ""
+							"name": "Role3"
 						},
 						{
 							"_type": "UMLAttribute",
@@ -44839,8 +44837,7 @@
 							"_parent": {
 								"$ref": "AAAAAAGZj7AZdOC9GWI="
 							},
-							"name": "Role5",
-							"type": ""
+							"name": "Role5"
 						},
 						{
 							"_type": "UMLAttribute",
@@ -44848,8 +44845,7 @@
 							"_parent": {
 								"$ref": "AAAAAAGZj7AZdOC9GWI="
 							},
-							"name": "Role6",
-							"type": ""
+							"name": "Role6"
 						},
 						{
 							"_type": "UMLAttribute",
@@ -44877,8 +44873,7 @@
 							"_parent": {
 								"$ref": "AAAAAAGZj7AZdOC9GWI="
 							},
-							"name": "Role9",
-							"type": ""
+							"name": "Role9"
 						},
 						{
 							"_type": "UMLAttribute",
@@ -44908,8 +44903,7 @@
 							"_parent": {
 								"$ref": "AAAAAAGZj7AZdOC9GWI="
 							},
-							"name": "Role12",
-							"type": ""
+							"name": "Role12"
 						},
 						{
 							"_type": "UMLAttribute",
@@ -44917,8 +44911,7 @@
 							"_parent": {
 								"$ref": "AAAAAAGZj7AZdOC9GWI="
 							},
-							"name": "Role13",
-							"type": ""
+							"name": "Role13"
 						},
 						{
 							"_type": "UMLAttribute",
@@ -44935,8 +44928,7 @@
 							"_parent": {
 								"$ref": "AAAAAAGZj7AZdOC9GWI="
 							},
-							"name": "Role15",
-							"type": ""
+							"name": "Role15"
 						},
 						{
 							"_type": "UMLAttribute",
@@ -44944,8 +44936,7 @@
 							"_parent": {
 								"$ref": "AAAAAAGZj7AZdOC9GWI="
 							},
-							"name": "Role16",
-							"type": ""
+							"name": "Role16"
 						}
 					]
 				},
@@ -60651,6 +60642,5 @@
 			],
 			"stereotype": ""
 		}
-	],
-	"documentVersion": 1
+	]
 }
