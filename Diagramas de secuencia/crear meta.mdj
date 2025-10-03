@@ -34,7 +34,7 @@
 							"_parent": {
 								"$ref": "AAAAAAGZmLCT2V/UUl4="
 							},
-							"name": "validar",
+							"name": "CrearMeta",
 							"ownedElements": [
 								{
 									"_type": "UMLSequenceDiagram",
@@ -62,7 +62,7 @@
 													},
 													"font": "Arial;13;0",
 													"parentStyle": true,
-													"left": 56.72998046875,
+													"left": 59.72998046875,
 													"top": 13,
 													"width": 61.4072265625,
 													"height": 13,
@@ -76,7 +76,7 @@
 													},
 													"font": "Arial;13;1",
 													"parentStyle": true,
-													"left": 37,
+													"left": 40,
 													"top": 13,
 													"width": 13.72998046875,
 													"height": 13,
@@ -85,7 +85,7 @@
 											],
 											"font": "Arial;13;0",
 											"parentStyle": false,
-											"left": 32,
+											"left": 35,
 											"top": 8,
 											"width": 1408,
 											"height": 881,
@@ -154,7 +154,7 @@
 															"left": 48,
 															"width": 106.20263671875,
 															"height": 13,
-															"text": "(from validar)"
+															"text": "(from CrearMeta)"
 														},
 														{
 															"_type": "LabelView",
@@ -277,7 +277,7 @@
 															"left": 256,
 															"width": 106.20263671875,
 															"height": 13,
-															"text": "(from validar)"
+															"text": "(from CrearMeta)"
 														},
 														{
 															"_type": "LabelView",
@@ -400,7 +400,7 @@
 															"left": 464,
 															"width": 106.20263671875,
 															"height": 13,
-															"text": "(from validar)"
+															"text": "(from CrearMeta)"
 														},
 														{
 															"_type": "LabelView",
@@ -639,7 +639,7 @@
 															"left": 512,
 															"width": 106.20263671875,
 															"height": 13,
-															"text": "(from validar)"
+															"text": "(from CrearMeta)"
 														},
 														{
 															"_type": "LabelView",
@@ -995,7 +995,7 @@
 															"left": -166,
 															"width": 106.20263671875,
 															"height": 13,
-															"text": "(from validar)"
+															"text": "(from CrearMeta)"
 														},
 														{
 															"_type": "LabelView",
@@ -1119,7 +1119,7 @@
 															"left": -64,
 															"width": 106.20263671875,
 															"height": 13,
-															"text": "(from validar)"
+															"text": "(from CrearMeta)"
 														},
 														{
 															"_type": "LabelView",
@@ -2501,7 +2501,7 @@
 									"name": "Usuario"
 								}
 							],
-							"stereotype": "alt",
+							"stereotype": "",
 							"isReentrant": false,
 							"messages": [
 								{
@@ -2868,7 +2868,8 @@
 							"_parent": {
 								"$ref": "AAAAAAGZmLCT2V/UUl4="
 							},
-							"name": "Role7"
+							"name": "Role7",
+							"type": ""
 						}
 					]
 				}
@@ -2946,7 +2947,7 @@
 											"parentStyle": true,
 											"width": 99.98193359375,
 											"height": 13,
-											"text": "(from Interaction1)"
+											"text": "(from validar)"
 										},
 										{
 											"_type": "LabelView",
@@ -3070,5 +3071,6 @@
 				}
 			]
 		}
-	]
+	],
+	"documentVersion": 1
 }

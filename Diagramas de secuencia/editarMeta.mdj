@@ -37,11 +37,11 @@
 									},
 									"font": "Arial;13;0",
 									"parentStyle": true,
-									"left": 24.72998046875,
+									"left": 22.55908203125,
 									"top": 5,
-									"width": 61.419921875,
+									"width": 33.94091796875,
 									"height": 13,
-									"text": "editarMeta"
+									"text": "Model"
 								},
 								{
 									"_type": "LabelView",
@@ -53,7 +53,7 @@
 									"parentStyle": true,
 									"left": 5,
 									"top": 5,
-									"width": 13.72998046875,
+									"width": 11.55908203125,
 									"height": 13,
 									"text": "sd"
 								}
@@ -2212,7 +2212,7 @@
 									"visible": false,
 									"font": "Arial;13;0",
 									"parentStyle": true,
-									"left": 72.72998046875,
+									"left": 71.99365234375,
 									"top": 405,
 									"height": 13
 								},
@@ -2226,7 +2226,7 @@
 									"parentStyle": true,
 									"left": 53,
 									"top": 405,
-									"width": 13.72998046875,
+									"width": 12.99365234375,
 									"height": 13,
 									"text": "alt"
 								},
@@ -2260,7 +2260,7 @@
 													"parentStyle": true,
 													"left": 68,
 													"top": 438,
-													"width": 91.7744140625,
+													"width": 89.90185546875,
 													"height": 13,
 													"text": "[Monto Inválido]"
 												}
@@ -2295,7 +2295,7 @@
 													"parentStyle": true,
 													"left": 68,
 													"top": 519,
-													"width": 83.103515625,
+													"width": 81.9609375,
 													"height": 13,
 													"text": "[Monto Válido]"
 												}
@@ -2353,7 +2353,7 @@
 					"_parent": {
 						"$ref": "AAAAAAGZln4zp5SEGhU="
 					},
-					"name": "Interaction1",
+					"name": "EditarMeta",
 					"ownedElements": [
 						{
 							"_type": "UMLSequenceDiagram",
@@ -2383,9 +2383,9 @@
 											"parentStyle": true,
 											"left": 24.72998046875,
 											"top": 5,
-											"width": 61.419921875,
+											"width": 62.86083984375,
 											"height": 13,
-											"text": "editarMeta"
+											"text": "EditarMeta"
 										},
 										{
 											"_type": "LabelView",
@@ -2471,7 +2471,7 @@
 													"left": -192,
 													"width": 106.20263671875,
 													"height": 13,
-													"text": "(from Interaction1)"
+													"text": "(from EditarMeta)"
 												},
 												{
 													"_type": "LabelView",
@@ -2592,7 +2592,7 @@
 													"parentStyle": true,
 													"width": 106.20263671875,
 													"height": 13,
-													"text": "(from Interaction1)"
+													"text": "(from EditarMeta)"
 												},
 												{
 													"_type": "LabelView",
@@ -2714,7 +2714,7 @@
 													"left": 208,
 													"width": 106.20263671875,
 													"height": 13,
-													"text": "(from Interaction1)"
+													"text": "(from EditarMeta)"
 												},
 												{
 													"_type": "LabelView",
@@ -2837,7 +2837,7 @@
 													"left": 352,
 													"width": 106.20263671875,
 													"height": 13,
-													"text": "(from Interaction1)"
+													"text": "(from EditarMeta)"
 												},
 												{
 													"_type": "LabelView",
@@ -2960,7 +2960,7 @@
 													"left": 64,
 													"width": 106.20263671875,
 													"height": 13,
-													"text": "(from Interaction1)"
+													"text": "(from EditarMeta)"
 												},
 												{
 													"_type": "LabelView",
@@ -5072,5 +5072,6 @@
 				}
 			]
 		}
-	]
+	],
+	"documentVersion": 1
 }
