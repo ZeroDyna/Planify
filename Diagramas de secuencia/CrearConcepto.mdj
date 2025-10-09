@@ -36,7 +36,7 @@
 					"_parent": {
 						"$ref": "AAAAAAGZtQV2932Mu7M="
 					},
-					"name": "Interaction1",
+					"name": "CrearConcepto",
 					"ownedElements": [
 						{
 							"_type": "UMLSequenceDiagram",
@@ -76,9 +76,9 @@
 											"parentStyle": true,
 											"left": 40.72998046875,
 											"top": 5,
-											"width": 67.9326171875,
+											"width": 88.15625,
 											"height": 13,
-											"text": "Interaction1"
+											"text": "CrearConcepto"
 										},
 										{
 											"_type": "LabelView",
@@ -163,9 +163,9 @@
 													"font": "Arial;13;0",
 													"parentStyle": true,
 													"left": -32,
-													"width": 106.20263671875,
+													"width": 126.42626953125,
 													"height": 13,
-													"text": "(from Interaction1)"
+													"text": "(from CrearConcepto)"
 												},
 												{
 													"_type": "LabelView",
@@ -286,9 +286,9 @@
 													"font": "Arial;13;0",
 													"parentStyle": true,
 													"left": 432,
-													"width": 106.20263671875,
+													"width": 126.42626953125,
 													"height": 13,
-													"text": "(from Interaction1)"
+													"text": "(from CrearConcepto)"
 												},
 												{
 													"_type": "LabelView",
@@ -525,9 +525,9 @@
 													"font": "Arial;13;0",
 													"parentStyle": true,
 													"left": 1040,
-													"width": 106.20263671875,
+													"width": 126.42626953125,
 													"height": 13,
-													"text": "(from Interaction1)"
+													"text": "(from CrearConcepto)"
 												},
 												{
 													"_type": "LabelView",
@@ -764,9 +764,9 @@
 													"font": "Arial;13;0",
 													"parentStyle": true,
 													"left": 1040,
-													"width": 106.20263671875,
+													"width": 126.42626953125,
 													"height": 13,
-													"text": "(from Interaction1)"
+													"text": "(from CrearConcepto)"
 												},
 												{
 													"_type": "LabelView",
@@ -1236,9 +1236,9 @@
 													"font": "Arial;13;0",
 													"parentStyle": true,
 													"left": 656,
-													"width": 106.20263671875,
+													"width": 126.42626953125,
 													"height": 13,
-													"text": "(from Interaction1)"
+													"text": "(from CrearConcepto)"
 												},
 												{
 													"_type": "LabelView",
@@ -2406,7 +2406,7 @@
 					"_parent": {
 						"$ref": "AAAAAAGZtY/cRYIZjRw="
 					},
-					"name": "Interaction1",
+					"name": "EditarConcepto",
 					"ownedElements": [
 						{
 							"_type": "UMLSequenceDiagram",
