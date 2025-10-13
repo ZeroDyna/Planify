@@ -32,6 +32,7 @@ export default class LoginApp extends Component {
       "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvcGVrbnNwd3BhdXVndmFybnZ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3NjE2ODksImV4cCI6MjA3NTMzNzY4OX0.Pay7ePl_elXtwHVHBvL-loqf0WC-47l_uDurKkGKwR8";
   }
 
+  // Pantalla de confirmación de cuenta
   componentDidMount() {
     const params = new URLSearchParams(window.location.search);
     const type = params.get("type");
@@ -48,10 +49,12 @@ export default class LoginApp extends Component {
     }
   }
 
+  // Maneja registro de usuario o inicio de sesión con validaciones
   handleAuth = async () => {
     this.setState({ loading: true, message: "" });
     const { isSignUp, password, confirmPassword, username, email } = this.state;
 
+    // Validación contraseña
     if (isSignUp) {
       if (password !== confirmPassword) {
         this.setState({
@@ -60,6 +63,7 @@ export default class LoginApp extends Component {
         });
         return;
       }
+      // Longitud minima de usuario
       if (username.trim().length < 4) {
         this.setState({
           message: "El nombre de usuario debe tener al menos 4 caracteres",
@@ -67,6 +71,7 @@ export default class LoginApp extends Component {
         });
         return;
       }
+      // Longitud minima contraseña
       if (password.length < 6) {
         this.setState({
           message: "La contraseña debe tener al menos 6 caracteres",
@@ -76,6 +81,7 @@ export default class LoginApp extends Component {
       }
     }
 
+    // Gestor de registro G-02
     try {
       const endpoint = isSignUp ? "signup" : "token?grant_type=password";
       const url = `${this.SUPABASE_URL}/auth/v1/${endpoint}`;
@@ -118,11 +124,14 @@ export default class LoginApp extends Component {
             data.error_description?.includes("already registered") ||
             data.message?.includes("already registered"))
         ) {
+          // Mensaje correo ya registrado
           this.setState({
             message:
               "Este correo electrónico ya está registrado. Por favor, inicia sesión.",
           });
-        } else {
+        }
+        // Error en la autenticacion
+        else {
           this.setState({
             message:
               data.error_description || data.msg || "Error en la autenticación",
@@ -138,6 +147,7 @@ export default class LoginApp extends Component {
     }
   };
 
+  // Envía código de recuperación de contraseña al email (MK-010)
   handleForgotPassword = async () => {
     this.setState({ loading: true, message: "" });
     const { recoveryEmail } = this.state;
@@ -151,7 +161,6 @@ export default class LoginApp extends Component {
     }
 
     try {
-      // Verificamos si el email existe usando nuestra Edge Function
       const checkEmailUrl = `${this.SUPABASE_URL}/functions/v1/check-email-exists`;
       const checkResponse = await fetch(checkEmailUrl, {
         method: "POST",
@@ -174,7 +183,6 @@ export default class LoginApp extends Component {
         return;
       }
 
-      // Si el email existe, procedemos a enviar el código OTP de recuperación
       const recoverUrl = `${this.SUPABASE_URL}/auth/v1/recover`;
       const recoverResponse = await fetch(recoverUrl, {
         method: "POST",
@@ -206,6 +214,7 @@ export default class LoginApp extends Component {
     }
   };
 
+  // Verifica el código ingresado y obtiene el access token para cambiar contraseña (MK-011)
   handleVerifyOtp = async () => {
     this.setState({ loading: true, message: "" });
     const { recoveryEmail, otpCode } = this.state;
@@ -249,6 +258,7 @@ export default class LoginApp extends Component {
     }
   };
 
+  // Actualiza la contraseña del usuario luego de ingresar el token  (MK-012)
   handleResetPassword = async () => {
     this.setState({ loading: true, message: "" });
     const { newPassword, confirmNewPassword, accessToken } = this.state;
@@ -306,6 +316,7 @@ export default class LoginApp extends Component {
     }
   };
 
+  // Cierra sesión del usuario
   handleLogout = () => {
     this.setState({
       user: null,
@@ -314,6 +325,7 @@ export default class LoginApp extends Component {
     });
   };
 
+  // Alterna entre registro e inicio de sesión
   handleToggleMode = () => {
     this.setState((prevState) => ({
       isSignUp: !prevState.isSignUp,
@@ -325,6 +337,7 @@ export default class LoginApp extends Component {
     }));
   };
 
+  // Regresa a la pantalla de login y limpia todos los estados de recuperación
   handleBackToLogin = () => {
     this.setState({
       showEmailConfirmation: false,
@@ -343,10 +356,12 @@ export default class LoginApp extends Component {
     });
   };
 
+  // Muestra la pantalla de recuperación de contraseña
   handleGoToForgotPassword = () => {
     this.setState({ showForgotPassword: true, message: "" });
   };
 
+  // Icono Check
   renderIcon(emoji) {
     return (
       <div className="success-icon-container">
@@ -355,6 +370,7 @@ export default class LoginApp extends Component {
     );
   }
 
+  // Muestra la pantalla de confirmación de cuenta creada exitosamente
   renderAccountConfirmed() {
     return (
       <div className="app-container">
@@ -378,6 +394,7 @@ export default class LoginApp extends Component {
     );
   }
 
+  // Muestra la pantalla indicando que se envió un email de verificación (MK-004)
   renderEmailConfirmation() {
     return (
       <div className="app-container">
@@ -398,6 +415,7 @@ export default class LoginApp extends Component {
     );
   }
 
+  // Muestra formulario para solicitar la recuperación de contraseña
   renderForgotPassword() {
     const { recoveryEmail, message, loading } = this.state;
 
@@ -405,7 +423,7 @@ export default class LoginApp extends Component {
       <div className="app-container">
         <div className="login-card">
           <div className="header-section text-center">
-            {this.renderIcon("🔒")}
+            {this.renderIcon("🔓")}
             <h1 className="title">Recuperar Contraseña</h1>
             <p className="subtitle">
               Ingresa tu correo electrónico para recibir un código de
@@ -448,6 +466,7 @@ export default class LoginApp extends Component {
     );
   }
 
+  // Muestra el formulario para ingresar el token de 6 dígitos
   renderOtpVerification() {
     const { otpCode, message, loading, recoveryEmail } = this.state;
 
@@ -502,6 +521,7 @@ export default class LoginApp extends Component {
     );
   }
 
+  // Muestra el formulario para establecer una nueva contraseña
   renderResetPassword() {
     const { newPassword, confirmNewPassword, message, loading } = this.state;
 
@@ -509,7 +529,7 @@ export default class LoginApp extends Component {
       <div className="app-container">
         <div className="login-card">
           <div className="header-section text-center">
-            {this.renderIcon("🔑")}
+            {this.renderIcon("🔓")}
             <h1 className="title">Nueva Contraseña</h1>
             <p className="subtitle">Ingresa tu nueva contraseña</p>
           </div>
@@ -560,6 +580,7 @@ export default class LoginApp extends Component {
     );
   }
 
+  // Muestra una pantalla de éxito después de cambiar la contraseña
   renderPasswordResetSuccess() {
     return (
       <div className="app-container">
@@ -585,6 +606,7 @@ export default class LoginApp extends Component {
     );
   }
 
+  // Muestra dailyInput después de iniciar sesión
   renderDashboard() {
     const { user, activeTab } = this.state;
     const displayName = user.user_metadata?.username || user.email;
@@ -663,6 +685,7 @@ export default class LoginApp extends Component {
     );
   }
 
+  // Muestra el formulario de login o registro con la opción de olvidé la contraseña (Mk-001 y MK-002)
   renderLoginForm() {
     const {
       isSignUp,
@@ -786,6 +809,7 @@ export default class LoginApp extends Component {
     );
   }
 
+  // Renderiza la pantalla correspondiente según el estado actual de la aplicación
   render() {
     const {
       showAccountConfirmed,
