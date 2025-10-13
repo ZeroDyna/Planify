@@ -20570,7 +20570,7 @@
 													"left": 244,
 													"top": 81,
 													"width": 1,
-													"height": 549
+													"height": 556
 												}
 											],
 											"font": "Arial;13;0",
@@ -20578,7 +20578,7 @@
 											"left": 176,
 											"top": 40,
 											"width": 136.32080078125,
-											"height": 590,
+											"height": 597,
 											"nameCompartment": {
 												"$ref": "AAAAAAGZj7BGgODuO+w="
 											},
@@ -20696,7 +20696,7 @@
 													"left": 450,
 													"top": 81,
 													"width": 1,
-													"height": 542
+													"height": 553
 												}
 											],
 											"font": "Arial;13;0",
@@ -20704,7 +20704,7 @@
 											"left": 392,
 											"top": 40,
 											"width": 115.37353515625,
-											"height": 583,
+											"height": 594,
 											"nameCompartment": {
 												"$ref": "AAAAAAGZj7GMoOEXdxY="
 											},
@@ -21182,7 +21182,7 @@
 													"left": 237,
 													"top": 144,
 													"width": 14,
-													"height": 208
+													"height": 40
 												}
 											],
 											"font": "Arial;13;0",
@@ -21238,7 +21238,7 @@
 														"$ref": "AAAAAAGZlJqhTrfFElI="
 													},
 													"edgePosition": 1,
-													"text": "2 : Consultar Balance(account)"
+													"text": "2 : ConsultarBalance(account)"
 												},
 												{
 													"_type": "EdgeLabelView",
@@ -21344,9 +21344,9 @@
 													},
 													"font": "Arial;13;0",
 													"parentStyle": false,
-													"left": 484,
+													"left": 440,
 													"top": 176,
-													"width": 163.29345703125,
+													"width": 251.0751953125,
 													"height": 13,
 													"alpha": 1.5707963267948966,
 													"distance": 10,
@@ -21354,7 +21354,7 @@
 														"$ref": "AAAAAAGZlKEmmrgog9U="
 													},
 													"edgePosition": 1,
-													"text": "3 : ObtenerDatos(usuarioID)"
+													"text": "3 : movimientos = ObtenerDatos(usuarioID)"
 												},
 												{
 													"_type": "EdgeLabelView",
@@ -21470,7 +21470,7 @@
 														"$ref": "AAAAAAGZlK8gD7g+xqo="
 													},
 													"edgePosition": 1,
-													"text": "4 : LIstaMov"
+													"text": "4 : "
 												},
 												{
 													"_type": "EdgeLabelView",
@@ -21577,9 +21577,9 @@
 													},
 													"font": "Arial;13;0",
 													"parentStyle": false,
-													"left": 548,
-													"top": 248,
-													"width": 227.2333984375,
+													"left": 539,
+													"top": 256,
+													"width": 245.29248046875,
 													"height": 13,
 													"alpha": 1.5707963267948966,
 													"distance": 10,
@@ -21587,7 +21587,7 @@
 														"$ref": "AAAAAAGZlK+asLhVmNQ="
 													},
 													"edgePosition": 1,
-													"text": "5 : Calcular Totales(ListaMov)"
+													"text": "5 : totales = Calcular Totales(movimientos)"
 												},
 												{
 													"_type": "EdgeLabelView",
@@ -21602,7 +21602,7 @@
 													"font": "Arial;13;0",
 													"parentStyle": false,
 													"left": 661,
-													"top": 233,
+													"top": 241,
 													"height": 13,
 													"alpha": 1.5707963267948966,
 													"distance": 25,
@@ -21624,7 +21624,7 @@
 													"font": "Arial;13;0",
 													"parentStyle": false,
 													"left": 661,
-													"top": 268,
+													"top": 276,
 													"height": 13,
 													"alpha": -1.5707963267948966,
 													"distance": 10,
@@ -21645,9 +21645,9 @@
 													"font": "Arial;13;0",
 													"parentStyle": false,
 													"left": 865,
-													"top": 264,
+													"top": 272,
 													"width": 14,
-													"height": 71
+													"height": 32
 												}
 											],
 											"font": "Arial;13;0",
@@ -21658,7 +21658,7 @@
 											"tail": {
 												"$ref": "AAAAAAGZj7GMoeEcans="
 											},
-											"points": "457:264;865:264",
+											"points": "457:272;865:272",
 											"nameLabel": {
 												"$ref": "AAAAAAGZlK+asLhWI+c="
 											},
@@ -21703,7 +21703,7 @@
 														"$ref": "AAAAAAGZlLBYk7hsauM="
 													},
 													"edgePosition": 1,
-													"text": "6 : Totales"
+													"text": "6 : "
 												},
 												{
 													"_type": "EdgeLabelView",
@@ -21810,9 +21810,9 @@
 													},
 													"font": "Arial;13;0",
 													"parentStyle": false,
-													"left": 317,
+													"left": 230,
 													"top": 324,
-													"width": 59.25537109375,
+													"width": 232.6416015625,
 													"height": 13,
 													"alpha": 1.5707963267948966,
 													"distance": 10,
@@ -21820,7 +21820,7 @@
 														"$ref": "AAAAAAGZlLDtHLiGE6c="
 													},
 													"edgePosition": 1,
-													"text": "7 : Totales"
+													"text": "7 : mostrarBalance(movimientos,totales)"
 												},
 												{
 													"_type": "EdgeLabelView",
@@ -21875,13 +21875,12 @@
 													"model": {
 														"$ref": "AAAAAAGZlLDtHLiFYQw="
 													},
-													"visible": false,
 													"font": "Arial;13;0",
 													"parentStyle": false,
 													"left": 237,
 													"top": 320,
 													"width": 14,
-													"height": 25
+													"height": 28
 												}
 											],
 											"font": "Arial;13;0",
@@ -22104,7 +22103,7 @@
 													"left": 237,
 													"top": 432,
 													"width": 14,
-													"height": 168
+													"height": 48
 												}
 											],
 											"font": "Arial;13;0",
@@ -22160,7 +22159,7 @@
 														"$ref": "AAAAAAGZlSG9+Lldhw8="
 													},
 													"edgePosition": 1,
-													"text": "9 : Consultar Balance(fechas, account)"
+													"text": "9 : ConsultarBalance(periodo, account)"
 												},
 												{
 													"_type": "EdgeLabelView",
@@ -22266,9 +22265,9 @@
 													},
 													"font": "Arial;13;0",
 													"parentStyle": false,
-													"left": 459,
+													"left": 413,
 													"top": 472,
-													"width": 212.43701171875,
+													"width": 305.2841796875,
 													"height": 13,
 													"alpha": 1.5707963267948966,
 													"distance": 10,
@@ -22276,7 +22275,7 @@
 														"$ref": "AAAAAAGZlSW2l7l4Nwc="
 													},
 													"edgePosition": 1,
-													"text": "10 : ObtenerDatos(fechas,usuarioID)"
+													"text": "10 : movimientos = ObtenerDatos(usuarioID,periodo)"
 												},
 												{
 													"_type": "EdgeLabelView",
@@ -22392,7 +22391,7 @@
 														"$ref": "AAAAAAGZlSY5ErmOAAo="
 													},
 													"edgePosition": 1,
-													"text": "11 : ListaMov"
+													"text": "11 : "
 												},
 												{
 													"_type": "EdgeLabelView",
@@ -22499,9 +22498,9 @@
 													},
 													"font": "Arial;13;0",
 													"parentStyle": false,
-													"left": 576,
+													"left": 535,
 													"top": 545,
-													"width": 170.50439453125,
+													"width": 252.5224609375,
 													"height": 13,
 													"alpha": 1.5707963267948966,
 													"distance": 10,
@@ -22509,7 +22508,7 @@
 														"$ref": "AAAAAAGZlSbA97mpztk="
 													},
 													"edgePosition": 1,
-													"text": "12 : CalcularTotales(listaMov)"
+													"text": "12 : totales = Calcular Totales(movimientos)"
 												},
 												{
 													"_type": "EdgeLabelView",
@@ -22625,7 +22624,7 @@
 														"$ref": "AAAAAAGZlScwp7nBzOQ="
 													},
 													"edgePosition": 1,
-													"text": "13 : Totales"
+													"text": "13 : "
 												},
 												{
 													"_type": "EdgeLabelView",
@@ -22732,9 +22731,9 @@
 													},
 													"font": "Arial;13;0",
 													"parentStyle": false,
-													"left": 313,
+													"left": 227,
 													"top": 596,
-													"width": 66.4853515625,
+													"width": 239.87158203125,
 													"height": 13,
 													"alpha": 1.5707963267948966,
 													"distance": 10,
@@ -22742,7 +22741,7 @@
 														"$ref": "AAAAAAGZlSeFTbnZIs0="
 													},
 													"edgePosition": 1,
-													"text": "14 : Totales"
+													"text": "14 : mostrarBalance(movimientos,totales)"
 												},
 												{
 													"_type": "EdgeLabelView",
@@ -22797,13 +22796,12 @@
 													"model": {
 														"$ref": "AAAAAAGZlSeFTLnY+RE="
 													},
-													"visible": false,
 													"font": "Arial;13;0",
 													"parentStyle": false,
 													"left": 237,
 													"top": 592,
 													"width": 14,
-													"height": 25
+													"height": 28
 												}
 											],
 											"font": "Arial;13;0",
@@ -22853,13 +22851,14 @@
 									"_parent": {
 										"$ref": "AAAAAAGZj7AZduC+ygk="
 									},
-									"name": "Consultar Balance",
+									"name": "ConsultarBalance",
 									"source": {
 										"$ref": "AAAAAAGZj7BGgODsQtk="
 									},
 									"target": {
 										"$ref": "AAAAAAGZj7GMoOEVTAg="
 									},
+									"messageSort": "asynchCall",
 									"arguments": "account"
 								},
 								{
@@ -22875,7 +22874,8 @@
 									"target": {
 										"$ref": "AAAAAAGZj7XD3uF0VkI="
 									},
-									"arguments": "usuarioID"
+									"arguments": "usuarioID",
+									"assignmentTarget": "movimientos"
 								},
 								{
 									"_type": "UMLMessage",
@@ -22883,7 +22883,6 @@
 									"_parent": {
 										"$ref": "AAAAAAGZj7AZduC+ygk="
 									},
-									"name": "LIstaMov",
 									"source": {
 										"$ref": "AAAAAAGZj7XD3uF0VkI="
 									},
@@ -22905,7 +22904,8 @@
 									"target": {
 										"$ref": "AAAAAAGZj7W+C+FVark="
 									},
-									"arguments": "ListaMov"
+									"arguments": "movimientos",
+									"assignmentTarget": "totales"
 								},
 								{
 									"_type": "UMLMessage",
@@ -22913,7 +22913,6 @@
 									"_parent": {
 										"$ref": "AAAAAAGZj7AZduC+ygk="
 									},
-									"name": "Totales",
 									"source": {
 										"$ref": "AAAAAAGZj7W+C+FVark="
 									},
@@ -22928,14 +22927,15 @@
 									"_parent": {
 										"$ref": "AAAAAAGZj7AZduC+ygk="
 									},
-									"name": "Totales",
+									"name": "mostrarBalance",
 									"source": {
 										"$ref": "AAAAAAGZj7GMoOEVTAg="
 									},
 									"target": {
 										"$ref": "AAAAAAGZj7BGgODsQtk="
 									},
-									"messageSort": "reply"
+									"messageSort": "asynchCall",
+									"arguments": "movimientos,totales"
 								},
 								{
 									"_type": "UMLMessage",
@@ -22959,14 +22959,15 @@
 									"_parent": {
 										"$ref": "AAAAAAGZj7AZduC+ygk="
 									},
-									"name": "Consultar Balance",
+									"name": "ConsultarBalance",
 									"source": {
 										"$ref": "AAAAAAGZj7BGgODsQtk="
 									},
 									"target": {
 										"$ref": "AAAAAAGZj7GMoOEVTAg="
 									},
-									"arguments": "fechas, account"
+									"messageSort": "asynchCall",
+									"arguments": "periodo, account"
 								},
 								{
 									"_type": "UMLMessage",
@@ -22981,7 +22982,8 @@
 									"target": {
 										"$ref": "AAAAAAGZj7XD3uF0VkI="
 									},
-									"arguments": "fechas,usuarioID"
+									"arguments": "usuarioID,periodo",
+									"assignmentTarget": "movimientos"
 								},
 								{
 									"_type": "UMLMessage",
@@ -22989,7 +22991,6 @@
 									"_parent": {
 										"$ref": "AAAAAAGZj7AZduC+ygk="
 									},
-									"name": "ListaMov",
 									"source": {
 										"$ref": "AAAAAAGZj7XD3uF0VkI="
 									},
@@ -23004,14 +23005,15 @@
 									"_parent": {
 										"$ref": "AAAAAAGZj7AZduC+ygk="
 									},
-									"name": "CalcularTotales",
+									"name": "Calcular Totales",
 									"source": {
 										"$ref": "AAAAAAGZj7GMoOEVTAg="
 									},
 									"target": {
 										"$ref": "AAAAAAGZj7W+C+FVark="
 									},
-									"arguments": "listaMov"
+									"arguments": "movimientos",
+									"assignmentTarget": "totales"
 								},
 								{
 									"_type": "UMLMessage",
@@ -23019,7 +23021,6 @@
 									"_parent": {
 										"$ref": "AAAAAAGZj7AZduC+ygk="
 									},
-									"name": "Totales",
 									"source": {
 										"$ref": "AAAAAAGZj7W+C+FVark="
 									},
@@ -23034,14 +23035,15 @@
 									"_parent": {
 										"$ref": "AAAAAAGZj7AZduC+ygk="
 									},
-									"name": "Totales",
+									"name": "mostrarBalance",
 									"source": {
 										"$ref": "AAAAAAGZj7GMoOEVTAg="
 									},
 									"target": {
 										"$ref": "AAAAAAGZj7BGgODsQtk="
 									},
-									"messageSort": "reply"
+									"messageSort": "asynchCall",
+									"arguments": "movimientos,totales"
 								}
 							],
 							"participants": [
@@ -26876,7 +26878,7 @@
 													"left": 868,
 													"top": 184,
 													"width": 14,
-													"height": 304
+													"height": 296
 												}
 											],
 											"font": "Arial;13;0",
@@ -27458,7 +27460,7 @@
 													"left": 1389,
 													"top": 432,
 													"width": 14,
-													"height": 28
+													"height": 48
 												}
 											],
 											"font": "Arial;13;0",
@@ -27504,7 +27506,7 @@
 													},
 													"font": "Arial;13;0",
 													"parentStyle": false,
-													"left": 1126,
+													"left": 1122,
 													"top": 476,
 													"width": 25.29541015625,
 													"height": 13,
@@ -27528,7 +27530,7 @@
 													"visible": false,
 													"font": "Arial;13;0",
 													"parentStyle": false,
-													"left": 1138,
+													"left": 1134,
 													"top": 491,
 													"height": 13,
 													"alpha": 1.5707963267948966,
@@ -27550,7 +27552,7 @@
 													"visible": false,
 													"font": "Arial;13;0",
 													"parentStyle": false,
-													"left": 1139,
+													"left": 1135,
 													"top": 456,
 													"height": 13,
 													"alpha": -1.5707963267948966,
@@ -27586,7 +27588,7 @@
 											"tail": {
 												"$ref": "AAAAAAGZqCfW2Cpm7xE="
 											},
-											"points": "1396:472;882:472",
+											"points": "1389:472;882:472",
 											"nameLabel": {
 												"$ref": "AAAAAAGZx0XPnBYjw40="
 											},
@@ -28214,7 +28216,7 @@
 													"left": 1389,
 													"top": 672,
 													"width": 14,
-													"height": 113
+													"height": 40
 												}
 											],
 											"font": "Arial;13;0",
@@ -28735,7 +28737,7 @@
 														"$ref": "AAAAAAGZqCfW2Cq/qTc="
 													},
 													"edgePosition": 1,
-													"text": "17 : validaEmail(username, contraseña, email)"
+													"text": "17 : validarEmail(username, contraseña, email)"
 												},
 												{
 													"_type": "EdgeLabelView",
@@ -29537,13 +29539,14 @@
 									"_parent": {
 										"$ref": "AAAAAAGZqCfW2CpGm/Y="
 									},
-									"name": "validaEmail",
+									"name": "validarEmail",
 									"source": {
 										"$ref": "AAAAAAGZqCfW2SsES8A="
 									},
 									"target": {
 										"$ref": "AAAAAAGZqCfW2SsBm1k="
 									},
+									"messageSort": "asynchCall",
 									"arguments": "username, contraseña, email"
 								},
 								{
