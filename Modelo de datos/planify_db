@@ -1,0 +1,82 @@
+-- =========================================================
+-- Tabla: app_user
+-- =========================================================
+CREATE TABLE app_user (
+    correo VARCHAR(100) PRIMARY KEY,
+    nombre_user VARCHAR(100) NOT NULL,
+    contrasena VARCHAR(100) NOT NULL,
+    ubicacion VARCHAR(100),
+    lugar_trabajo VARCHAR(100)
+);
+
+-- =========================================================
+-- Tabla: account
+-- =========================================================
+CREATE TABLE account (
+    correo_account VARCHAR(100) PRIMARY KEY,
+    fecha_creacion DATE NOT NULL,
+    activo BOOLEAN DEFAULT TRUE,
+    nombre_account VARCHAR(100) NOT NULL,
+    correo_user VARCHAR(100) NOT NULL,
+    FOREIGN KEY (correo_user) REFERENCES app_user(correo)
+        ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- =========================================================
+-- Tabla: concept
+-- =========================================================
+CREATE TABLE concept (
+    id_concept SERIAL PRIMARY KEY,
+    correo_account VARCHAR(100) NOT NULL,
+    nombre_concept VARCHAR(100) NOT NULL,
+    tipo BOOLEAN,
+    periodo VARCHAR(50),
+    activo BOOLEAN DEFAULT TRUE,
+    FOREIGN KEY (correo_account) REFERENCES account(correo_account)
+        ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- =========================================================
+-- Tabla: goal
+-- =========================================================
+CREATE TABLE goal (
+    id_goal SERIAL PRIMARY KEY,
+    correo_account VARCHAR(100) NOT NULL,
+    fecha_objetivo DATE,
+    monto_objetivo DECIMAL(10,2),
+    tipo BOOLEAN,
+    estado VARCHAR(50),
+    FOREIGN KEY (correo_account) REFERENCES account(correo_account)
+        ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- =========================================================
+-- Tabla: concept_movement
+-- =========================================================
+CREATE TABLE concept_movement (
+    id_concept_movement SERIAL PRIMARY KEY,
+    correo_account VARCHAR(100) NOT NULL,
+    contador INTEGER,
+    fecha_operacion DATE NOT NULL,
+    monto DECIMAL(10,2) NOT NULL,
+    id_concept INTEGER,
+    FOREIGN KEY (correo_account) REFERENCES account(correo_account)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (id_concept) REFERENCES concept(id_concept)
+        ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+-- =========================================================
+-- Tabla: spontaneous_movement
+-- =========================================================
+CREATE TABLE spontaneous_movement (
+    id_spontaneous SERIAL PRIMARY KEY,
+    correo_account VARCHAR(100) NOT NULL,
+    contador INTEGER,
+    fecha_operacion DATE NOT NULL,
+    motivo VARCHAR(150),
+    tipo BOOLEAN,
+    monto DECIMAL(10,2),
+    FOREIGN KEY (correo_account) REFERENCES account(correo_account)
+        ON DELETE CASCADE ON UPDATE CASCADE
+);
