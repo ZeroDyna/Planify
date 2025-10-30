@@ -1,5 +1,6 @@
 import React, { Component } from "react";
 import ObjetivoPanel from "./ObjetivoPanel";
+import AccountPanel from "./AccountPanel";
 export default class LoginApp extends Component {
     constructor(props) {
         super(props);
@@ -889,9 +890,14 @@ export default class LoginApp extends Component {
                         </div>
                     )}
                     {activeTab === "account" && (
-                        <div className="text-center" style={{ padding: "2rem" }}>
-                            <p>Cuenta: {displayName}</p>
-                            <p>Email: {user && (user.email || user.correo)}</p>
+                        <div style={{ padding: "2rem" }}>
+                            <AccountPanel
+                                SUPABASE_URL={this.SUPABASE_URL}
+                                SUPABASE_KEY={this.SUPABASE_KEY}
+                                accessToken={this.state.accessToken}
+                                user={this.state.user}
+                                onOpenChangePassword={this.handleGoToForgotPassword}
+                            />
                         </div>
                     )}
                 </div>
