@@ -263,7 +263,7 @@ export default function ConceptsPanel({
     }
   };
 
-  // Preparar formulario para nuevo
+  // Formulario para nuevo concepto
   const handleNew = () => {
     setForm({
       nombre_concepto: "",
