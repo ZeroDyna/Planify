@@ -2,11 +2,13 @@ import React, { Component } from "react";
 import ObjetivoPanel from "./ObjetivoPanel";
 import AccountPanel from "./AccountPanel";
 import ConceptsPanel from "./ConceptsPanel";
+
 export default class LoginApp extends Component {
   constructor(props) {
     super(props);
 
     this.state = {
+      // MK-001 Login y MK-002 Registro - Campos del formulario
       email: "",
       password: "",
       confirmPassword: "",
@@ -15,19 +17,28 @@ export default class LoginApp extends Component {
       message: "",
       loading: false,
       user: null,
+
+      // MK-003 Confirmación de Email y MK-004 Account Created
       showEmailConfirmation: false,
       showAccountConfirmed: false,
+
+      // MK-005 Home/Dashboard - Navegación por pestañas
       activeTab: "balance",
+
+      // MK-010 Change Password - Send Code
       showForgotPassword: false,
       showOtpVerification: false,
       showResetPassword: false,
       showPasswordResetSuccess: false,
       otpCode: "",
       recoveryEmail: "",
+
+      // MK-012 Change Password
       newPassword: "",
       confirmNewPassword: "",
       accessToken: null,
-      // goal form fields
+
+      // MK-008 Goals - Campos del formulario de objetivos
       goal_correo_cuenta: "",
       goal_fecha_objetivo: "",
       goal_monto: "",
@@ -36,14 +47,13 @@ export default class LoginApp extends Component {
       creatingGoal: false,
     };
 
-    // Reemplaza SUPABASE_URL y SUPABASE_KEY con los valores de tu proyecto.
-    // SUPABASE_KEY debe ser la ANON (public) key cuando usas desde el frontend.
+    // Configuración de Supabase para todas las pantallas
     this.SUPABASE_URL = "https://sopeknspwpauugvarnvw.supabase.co";
     this.SUPABASE_KEY =
       "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvcGVrbnNwd3BhdXVndmFybnZ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3NjE2ODksImV4cCI6MjA3NTMzNzY4OX0.Pay7ePl_elXtwHVHBvL-loqf0WC-47l_uDurKkGKwR8";
   }
 
-  // Pantalla de confirmación de cuenta
+  // FP-07: MK-004 Account Created - Verificación de cuenta confirmada
   componentDidMount() {
     const params = new URLSearchParams(window.location.search);
     const type = params.get("type");
@@ -60,21 +70,17 @@ export default class LoginApp extends Component {
     }
   }
 
-  // Helper: insertar usuario y cuenta directamente en las tablas (signup)
-  // Nota: esto guarda la contraseña en la tabla tal cual (si tu tabla usa 'contrasena').
-  // Es inseguro para producción; lo dejamos así por exigencia tuya de tocar solo App.js.
+  // FP-08: MK-002 Registro de Usuario - Crear usuario y cuenta en tablas
   async signupToTables({ correo, nombre_usuario, password }) {
     const headers = {
       "Content-Type": "application/json",
       apikey: this.SUPABASE_KEY,
-      // NO usamos Authorization aquí; si tienes RLS activo necesitarás usar un token válido
     };
 
-    // Insertar en usuario (si tu tabla tiene campo 'contrasena', ajusta el nombre)
+    // Insertar en usuario
     const usuarioBody = {
       correo,
       nombre_usuario,
-      // Nota: esto será guardado tal cual en la BD (INSEGURO). Mejor usar hash en backend.
       contrasena: password,
     };
 
@@ -105,7 +111,7 @@ export default class LoginApp extends Component {
       body: JSON.stringify(cuentaBody),
     });
 
-    // Si falla por conflicto ya existente (409), no es crítico; PostgREST devolverá 409
+    // Si falla por conflicto ya existente (409), no es crítico
     if (!resCuenta.ok && resCuenta.status !== 409) {
       const text = await resCuenta.text().catch(() => null);
       throw new Error(`Error al crear cuenta: ${resCuenta.status} ${text}`);
@@ -114,17 +120,14 @@ export default class LoginApp extends Component {
     return true;
   }
 
-  // Helper: login consultando la tabla usuario (compara correo + contrasena)
-  // Devuelve el objeto usuario si coincide, o null si no existe.
-  // Retornamos un objeto compatible con el shape que espera la UI (user.user_metadata.username y user.email).
+  // FP-09: MK-001 Login - Validar credenciales del usuario
   async loginFromTables({ correo, password }) {
     const headers = {
       "Content-Type": "application/json",
       apikey: this.SUPABASE_KEY,
     };
 
-    // Hacer GET filtrando por correo y contrasena (PostgREST)
-    // Ajuste: no pedimos 'id' porque en tu esquema puede que no exista; pedimos correo y nombre.
+    // Hacer GET filtrando por correo y contrasena
     const url = `${
       this.SUPABASE_URL
     }/rest/v1/usuario?correo=eq.${encodeURIComponent(
@@ -143,22 +146,20 @@ export default class LoginApp extends Component {
     if (!Array.isArray(data) || data.length === 0) return null;
 
     const row = data[0];
-    // Normalizamos la forma del usuario para que el resto de la app no necesite cambios:
-    // ponemos user.user_metadata.username y user.email
+    // Normalizamos la forma del usuario
     return {
       email: row.correo || row.email || row.correo_usuario || row.user_email,
       user_metadata: { username: row.nombre_usuario || row.nombre || "" },
-      // añadimos raw row por si necesitas inspectar:
       _raw: row,
     };
   }
 
-  // Maneja registro de usuario o inicio de sesión con validaciones
+  // FP-10: MK-001 Login y MK-002 Registro - Manejar autenticación
   handleAuth = async () => {
     this.setState({ loading: true, message: "" });
     const { isSignUp, password, confirmPassword, username, email } = this.state;
 
-    // Validación contraseña
+    // MK-002 Registro - Validaciones
     if (isSignUp) {
       if (password !== confirmPassword) {
         this.setState({
@@ -188,16 +189,16 @@ export default class LoginApp extends Component {
     // Gestor de registro/login usando tablas usuario/cuenta
     try {
       if (isSignUp) {
-        // crear usuario y cuenta en tablas
+        // MK-002 Registro - crear usuario y cuenta en tablas
         try {
           await this.signupToTables({
+            // FP-08
             correo: email,
             nombre_usuario: username,
             password,
           });
         } catch (err) {
           console.error("signupToTables error", err);
-          // Si el error contiene "already exists" o 409, dejamos que el flujo siga para intentar login.
           this.setState({
             message: err.message || "Error al crear usuario",
             loading: false,
@@ -205,10 +206,10 @@ export default class LoginApp extends Component {
           return;
         }
 
-        // iniciar sesión automático consultando la tabla
+        // MK-001 Login - iniciar sesión automático después del registro
         let user;
         try {
-          user = await this.loginFromTables({ correo: email, password });
+          user = await this.loginFromTables({ correo: email, password }); // FP-09
         } catch (err) {
           console.error("loginFromTables after signup error", err);
           this.setState({
@@ -228,9 +229,10 @@ export default class LoginApp extends Component {
           return;
         }
 
+        // MK-005 Home/Dashboard - Navegación exitosa después del login
         this.setState({
           user,
-          accessToken: "", // sin token JWT en esta integración mínima
+          accessToken: "",
           message: "Registro y sesión correctos",
           loading: false,
           isSignUp: false,
@@ -240,7 +242,7 @@ export default class LoginApp extends Component {
           username: "",
         });
       } else {
-        // login
+        // MK-001 Login - Validar campos obligatorios
         if (!email || !password) {
           this.setState({
             message: "Introduce correo y contraseña",
@@ -248,9 +250,11 @@ export default class LoginApp extends Component {
           });
           return;
         }
+
+        // MK-001 Login - Validar credenciales
         let user;
         try {
-          user = await this.loginFromTables({ correo: email, password });
+          user = await this.loginFromTables({ correo: email, password }); // FP-09
         } catch (err) {
           console.error("loginFromTables error", err);
           this.setState({
@@ -264,9 +268,10 @@ export default class LoginApp extends Component {
           return;
         }
 
+        // MK-005 Home/Dashboard - Navegación exitosa
         this.setState({
           user,
-          accessToken: "", // no usamos token Supabase aquí
+          accessToken: "",
           message: "Inicio de sesión correcto",
           loading: false,
           email: "",
@@ -282,7 +287,7 @@ export default class LoginApp extends Component {
     }
   };
 
-  // Envía código de recuperación de contraseña al email (MK-010)
+  // FP-11: MK-010 Change Password - Send Code - Enviar código de recuperación
   handleForgotPassword = async () => {
     this.setState({ loading: true, message: "" });
     const { recoveryEmail } = this.state;
@@ -296,6 +301,7 @@ export default class LoginApp extends Component {
     }
 
     try {
+      // MK-010-E Email Not Registered - Verificar si el email existe
       const checkEmailUrl = `${this.SUPABASE_URL}/functions/v1/check-email-exists`;
       const checkResponse = await fetch(checkEmailUrl, {
         method: "POST",
@@ -318,6 +324,7 @@ export default class LoginApp extends Component {
         return;
       }
 
+      // MK-010 Change Password - Send Code - Enviar código de recuperación
       const recoverUrl = `${this.SUPABASE_URL}/auth/v1/recover`;
       const recoverResponse = await fetch(recoverUrl, {
         method: "POST",
@@ -331,6 +338,7 @@ export default class LoginApp extends Component {
       });
 
       if (recoverResponse.ok) {
+        // MK-011 Enter Verification Code - Navegación a verificación
         this.setState({
           showForgotPassword: false,
           showOtpVerification: true,
@@ -349,7 +357,7 @@ export default class LoginApp extends Component {
     }
   };
 
-  // Verifica el código ingresado y obtiene el access token para cambiar contraseña (MK-011)
+  // FP-12: MK-011 Enter Verification Code - Verificar código OTP
   handleVerifyOtp = async () => {
     this.setState({ loading: true, message: "" });
     const { recoveryEmail, otpCode } = this.state;
@@ -372,6 +380,7 @@ export default class LoginApp extends Component {
       const data = await response.json();
 
       if (response.ok && data.access_token) {
+        // MK-012 Change Password - Navegación exitosa con token
         this.setState({
           showOtpVerification: false,
           showResetPassword: true,
@@ -379,6 +388,7 @@ export default class LoginApp extends Component {
           accessToken: data.access_token,
         });
       } else {
+        // MK-011-E Incorrect Code - Mensaje de error
         this.setState({
           message:
             "El código ingresado es incorrecto. Por favor, verifica e intenta de nuevo.",
@@ -393,11 +403,12 @@ export default class LoginApp extends Component {
     }
   };
 
-  // Actualiza la contraseña del usuario luego de ingresar el token  (MK-012)
+  // FP-13: MK-012 Change Password - Actualizar contraseña
   handleResetPassword = async () => {
     this.setState({ loading: true, message: "" });
     const { newPassword, confirmNewPassword, accessToken } = this.state;
 
+    // MK-012-E Passwords Don't Match - Validación
     if (newPassword !== confirmNewPassword) {
       this.setState({
         message: "Las contraseñas no coinciden",
@@ -427,6 +438,7 @@ export default class LoginApp extends Component {
       });
 
       if (response.ok) {
+        // MK-013 Password Changed Successfully - Navegación exitosa
         this.setState({
           showResetPassword: false,
           showPasswordResetSuccess: true,
@@ -451,7 +463,7 @@ export default class LoginApp extends Component {
     }
   };
 
-  // Crear objetivo (usa token guardado en state.accessToken)
+  // FP-14: MK-008 Goals - Crear objetivo
   createObjetivo = async () => {
     this.setState({ creatingGoal: true, message: "" });
     const {
@@ -485,7 +497,7 @@ export default class LoginApp extends Component {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          apikey: this.SUPABASE_KEY, // usa la anon key
+          apikey: this.SUPABASE_KEY,
           Authorization: `Bearer ${accessToken}`,
           Prefer: "return=representation",
         },
@@ -519,7 +531,7 @@ export default class LoginApp extends Component {
     }
   };
 
-  // Cierra sesión del usuario
+  // FP-15: MK-001 Login - Cerrar sesión
   handleLogout = () => {
     this.setState({
       user: null,
@@ -529,7 +541,7 @@ export default class LoginApp extends Component {
     });
   };
 
-  // Alterna entre registro e inicio de sesión
+  // FP-16: MK-001 Login / MK-002 Registro - Alternar entre modos
   handleToggleMode = () => {
     this.setState((prevState) => ({
       isSignUp: !prevState.isSignUp,
@@ -541,7 +553,7 @@ export default class LoginApp extends Component {
     }));
   };
 
-  // Regresa a la pantalla de login y limpia todos los estados de recuperación
+  // FP-17: Navegación - Regresar al login desde cualquier pantalla
   handleBackToLogin = () => {
     this.setState({
       showEmailConfirmation: false,
@@ -560,12 +572,12 @@ export default class LoginApp extends Component {
     });
   };
 
-  // Muestra la pantalla de recuperación de contraseña
+  // FP-18: MK-010 Change Password - Navegar a recuperación de contraseña
   handleGoToForgotPassword = () => {
     this.setState({ showForgotPassword: true, message: "" });
   };
 
-  // Icono Check
+  // Componente auxiliar para íconos
   renderIcon(emoji) {
     return (
       <div className="success-icon-container">
@@ -574,7 +586,7 @@ export default class LoginApp extends Component {
     );
   }
 
-  // Muestra la pantalla de confirmación de cuenta creada exitosamente
+  // FP-19: MK-004 Account Created - Renderizar pantalla de cuenta confirmada
   renderAccountConfirmed() {
     return (
       <div className="app-container">
@@ -587,7 +599,7 @@ export default class LoginApp extends Component {
               sesión con tu cuenta.
             </p>
             <button
-              onClick={this.handleBackToLogin}
+              onClick={this.handleBackToLogin} // FP-17
               className="btn btn-primary"
             >
               Ir al inicio de sesión
@@ -598,7 +610,7 @@ export default class LoginApp extends Component {
     );
   }
 
-  // Muestra la pantalla indicando que se envió un email de verificación (MK-004)
+  // FP-20: MK-003 Confirmación de Email - Renderizar pantalla de verificación
   renderEmailConfirmation() {
     return (
       <div className="app-container">
@@ -619,7 +631,7 @@ export default class LoginApp extends Component {
     );
   }
 
-  // Muestra formulario para solicitar la recuperación de contraseña
+  // FP-21: MK-010 Change Password - Send Code - Renderizar recuperación
   renderForgotPassword() {
     const { recoveryEmail, message, loading } = this.state;
 
@@ -652,7 +664,7 @@ export default class LoginApp extends Component {
             {message && <div className="message message-error">{message}</div>}
 
             <button
-              onClick={this.handleForgotPassword}
+              onClick={this.handleForgotPassword} // FP-11
               disabled={loading}
               className="btn btn-primary"
             >
@@ -662,6 +674,8 @@ export default class LoginApp extends Component {
 
           <div className="toggle-section">
             <button onClick={this.handleBackToLogin} className="btn-link">
+              {" "}
+              {/* FP-17 */}
               Volver al inicio de sesión
             </button>
           </div>
@@ -670,7 +684,7 @@ export default class LoginApp extends Component {
     );
   }
 
-  // Muestra el formulario para ingresar el token de 6 dígitos
+  // FP-22: MK-011 Enter Verification Code - Renderizar verificación OTP
   renderOtpVerification() {
     const { otpCode, message, loading, recoveryEmail } = this.state;
 
@@ -707,7 +721,7 @@ export default class LoginApp extends Component {
             {message && <div className="message message-error">{message}</div>}
 
             <button
-              onClick={this.handleVerifyOtp}
+              onClick={this.handleVerifyOtp} // FP-12
               disabled={loading}
               className="btn btn-primary"
             >
@@ -717,6 +731,8 @@ export default class LoginApp extends Component {
 
           <div className="toggle-section">
             <button onClick={this.handleBackToLogin} className="btn-link">
+              {" "}
+              {/* FP-17 */}
               Volver al inicio de sesión
             </button>
           </div>
@@ -725,7 +741,7 @@ export default class LoginApp extends Component {
     );
   }
 
-  // Muestra el formulario para establecer una nueva contraseña
+  // FP-23: MK-012 Change Password - Renderizar formulario de nueva contraseña
   renderResetPassword() {
     const { newPassword, confirmNewPassword, message, loading } = this.state;
 
@@ -766,7 +782,7 @@ export default class LoginApp extends Component {
             {message && <div className="message message-error">{message}</div>}
 
             <button
-              onClick={this.handleResetPassword}
+              onClick={this.handleResetPassword} // FP-13
               disabled={loading}
               className="btn btn-primary"
             >
@@ -776,6 +792,8 @@ export default class LoginApp extends Component {
 
           <div className="toggle-section">
             <button onClick={this.handleBackToLogin} className="btn-link">
+              {" "}
+              {/* FP-17 */}
               Volver al inicio de sesión
             </button>
           </div>
@@ -784,7 +802,7 @@ export default class LoginApp extends Component {
     );
   }
 
-  // Muestra una pantalla de éxito después de cambiar la contraseña
+  // FP-24: MK-013 Password Changed Successfully - Renderizar éxito
   renderPasswordResetSuccess() {
     return (
       <div className="app-container">
@@ -799,7 +817,7 @@ export default class LoginApp extends Component {
               sesión con tu nueva contraseña.
             </p>
             <button
-              onClick={this.handleBackToLogin}
+              onClick={this.handleBackToLogin} // FP-17
               className="btn btn-primary"
             >
               Ir al inicio de sesión
@@ -810,7 +828,7 @@ export default class LoginApp extends Component {
     );
   }
 
-  // Muestra dailyInput después de iniciar sesión
+  // FP-25: MK-005 Home/Dashboard - Renderizar dashboard principal
   renderDashboard() {
     const {
       user,
@@ -822,7 +840,7 @@ export default class LoginApp extends Component {
       goal_estado,
       creatingGoal,
     } = this.state;
-    // adaptamos displayName para ambos shapes (auth o usuario propio)
+
     const displayName =
       (user && (user.user_metadata?.username || user.nombre_usuario)) ||
       (user && user.email) ||
@@ -833,10 +851,13 @@ export default class LoginApp extends Component {
         <div className="dashboard-header">
           <div className="logo">📋 Planify</div>
           <button onClick={this.handleLogout} className="btn-logout">
+            {" "}
+            {/* FP-15 */}
             Cerrar Sesión
           </button>
         </div>
 
+        {/* MK-005 Home/Dashboard - Navegación por pestañas */}
         <div className="tabs-container">
           <button
             className={`tab ${activeTab === "balance" ? "tab-active" : ""}`}
@@ -908,7 +929,7 @@ export default class LoginApp extends Component {
                 SUPABASE_KEY={this.SUPABASE_KEY}
                 accessToken={this.state.accessToken}
                 user={this.state.user}
-                onOpenChangePassword={this.handleGoToForgotPassword}
+                onOpenChangePassword={this.handleGoToForgotPassword} // FP-18
               />
             </div>
           )}
@@ -917,7 +938,7 @@ export default class LoginApp extends Component {
     );
   }
 
-  // Muestra el formulario de login o registro con la opción de olvidé la contraseña (Mk-001 y MK-002)
+  // FP-26: MK-001 Login y MK-002 Registro - Renderizar formulario de autenticación
   renderLoginForm() {
     const {
       isSignUp,
@@ -1006,7 +1027,7 @@ export default class LoginApp extends Component {
             )}
 
             <button
-              onClick={this.handleAuth}
+              onClick={this.handleAuth} // FP-10
               disabled={loading}
               className="btn btn-primary"
             >
@@ -1021,7 +1042,7 @@ export default class LoginApp extends Component {
           {!isSignUp && (
             <div className="forgot-password-section">
               <button
-                onClick={this.handleGoToForgotPassword}
+                onClick={this.handleGoToForgotPassword} // FP-18
                 className="btn-link"
               >
                 ¿Olvidaste tu contraseña?
@@ -1031,6 +1052,8 @@ export default class LoginApp extends Component {
 
           <div className="toggle-section">
             <button onClick={this.handleToggleMode} className="btn-link">
+              {" "}
+              {/* FP-16 */}
               {isSignUp
                 ? "¿Ya tienes cuenta? Inicia sesión"
                 : "¿No tienes cuenta? Regístrate"}
@@ -1041,7 +1064,7 @@ export default class LoginApp extends Component {
     );
   }
 
-  // Renderiza la pantalla correspondiente según el estado actual de la aplicación
+  // FP-27: Render principal - Controlador de navegación entre pantallas
   render() {
     const {
       showAccountConfirmed,
@@ -1053,13 +1076,13 @@ export default class LoginApp extends Component {
       user,
     } = this.state;
 
-    if (showAccountConfirmed) return this.renderAccountConfirmed();
-    if (showEmailConfirmation) return this.renderEmailConfirmation();
-    if (showPasswordResetSuccess) return this.renderPasswordResetSuccess();
-    if (showResetPassword) return this.renderResetPassword();
-    if (showOtpVerification) return this.renderOtpVerification();
-    if (showForgotPassword) return this.renderForgotPassword();
-    if (user) return this.renderDashboard();
-    return this.renderLoginForm();
+    if (showAccountConfirmed) return this.renderAccountConfirmed(); // FP-19
+    if (showEmailConfirmation) return this.renderEmailConfirmation(); // FP-20
+    if (showPasswordResetSuccess) return this.renderPasswordResetSuccess(); // FP-24
+    if (showResetPassword) return this.renderResetPassword(); // FP-23
+    if (showOtpVerification) return this.renderOtpVerification(); // FP-22
+    if (showForgotPassword) return this.renderForgotPassword(); // FP-21
+    if (user) return this.renderDashboard(); // FP-25
+    return this.renderLoginForm(); // FP-26
   }
 }
