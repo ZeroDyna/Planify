@@ -24,10 +24,11 @@ export default function ConceptsPanel({
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
+  // MK-013 Concepts - campos del formulario
   const [form, setForm] = useState({
-    nombre_concepto: "",
+    nombre_concepto: "", // Concepto (nombre)
     tipo: false, // false = Expense, true = Income
-    periodo: "Biweekly",
+    periodo: "Biweekly", // Periodo: Daily, weekly, biweekly, monthly
     activo: true,
   });
   const [saving, setSaving] = useState(false);
@@ -57,7 +58,7 @@ export default function ConceptsPanel({
     />
   );
 
-  // Obtener cuenta del usuario
+  // FP-01: Obtener cuenta del usuario - funcion auxiliar de MK - 013
   const fetchCuenta = async () => {
     setMessage("");
     try {
@@ -97,7 +98,8 @@ export default function ConceptsPanel({
     }
   };
 
-  // Cargar conceptos de la cuenta
+  // FP-02: Cargar conceptos de la cuenta
+  // Pantalla: Mk-013 Concepts - Lista de conceptos existentes
   const fetchConceptos = async () => {
     if (!cuenta) {
       setConceptos([]);
@@ -138,7 +140,9 @@ export default function ConceptsPanel({
     }
   };
 
-  // Crear nuevo concepto
+  // FP-03: MK-013 Concepts - Crear nuevo concepto
+  // Acción: Botón New - valida y crea el nuevo concepto con su configuración
+  // Navegación: Salida a Mk-014 (Concept Created) - representado por successMessage
   const createConcepto = async () => {
     setMessage("");
     setSuccessMessage("");
@@ -146,6 +150,7 @@ export default function ConceptsPanel({
       setMessage("No hay cuenta asociada a tu usuario.");
       return;
     }
+    // Validación: Concepto
     if (!form.nombre_concepto.trim()) {
       setMessage("El nombre del concepto es obligatorio.");
       return;
@@ -181,7 +186,10 @@ export default function ConceptsPanel({
       await fetchConceptos();
       if (Array.isArray(data) && data.length)
         setSelectedId(data[0].id_concepto);
+      // Mk-014 Concept Created - Mensaje de confirmación
       setSuccessMessage("Concepto creado correctamente");
+      // Restablece valores por defecto
+      // Mk-013 Concepts - Reinicio de formulario
       setForm({
         nombre_concepto: "",
         tipo: false,
@@ -198,7 +206,7 @@ export default function ConceptsPanel({
     }
   };
 
-  // Actualizar concepto existente
+  // FP-04: Mk-013 Concepts - Actualizar concepto existente
   const updateConcepto = async () => {
     setMessage("");
     setSuccessMessage("");
@@ -206,6 +214,7 @@ export default function ConceptsPanel({
       setMessage("Selecciona un concepto para editar.");
       return;
     }
+    // Validación: Concepto
     if (!form.nombre_concepto.trim()) {
       setMessage("El nombre del concepto es obligatorio.");
       return;
@@ -236,6 +245,7 @@ export default function ConceptsPanel({
         return;
       }
       await fetchConceptos();
+      // Mk-014 Concept Created - Mensaje de confirmación para actualización
       setSuccessMessage("Concepto actualizado correctamente");
       setShowForm(false);
       setIsEditing(false);
@@ -248,7 +258,7 @@ export default function ConceptsPanel({
     }
   };
 
-  // Preparar formulario para edición
+  // FP-05: Mk-013 Concepts - Preparar formulario para edición
   const handleEdit = () => {
     const selected = conceptos.find((c) => c.id_concepto === selectedId);
     if (selected) {
@@ -263,7 +273,8 @@ export default function ConceptsPanel({
     }
   };
 
-  // Formulario para nuevo concepto
+  // FP-06: MK-013 Concepts - Formulario para nuevo concepto
+  // Acción: Botón New - inicializa formulario para nuevo concepto
   const handleNew = () => {
     setForm({
       nombre_concepto: "",
@@ -288,6 +299,7 @@ export default function ConceptsPanel({
     // eslint-disable-next-line
   }, [cuenta]);
 
+  // Mk-013 Concepts - Estilos y componentes de la interfaz
   const styles = {
     container: { display: "flex", gap: 20, flexWrap: "wrap", padding: 12 },
     left: { flex: "1 1 360px", minWidth: 320 },
@@ -382,25 +394,27 @@ export default function ConceptsPanel({
                   color: "#374151",
                 }}
                 onClick={() => {
-                  fetchCuenta();
-                  fetchConceptos();
+                  fetchCuenta(); // FP-01
+                  fetchConceptos(); // FP-02
                 }}
               >
                 {loadingList ? <Spinner /> : "Refrescar"}
               </button>
             </div>
-
+            {/* Mk-014-E Concept Already Exists - Mensajes de error */}
             {message && (
               <div style={{ color: "#b91c1c", marginBottom: 12, fontSize: 14 }}>
                 {message}
               </div>
             )}
+            {/* Mk-014 Concept Created - Mensajes de éxito */}
             {successMessage && (
               <div style={{ color: "#065f46", marginBottom: 12, fontSize: 14 }}>
                 {successMessage}
               </div>
             )}
 
+            {/* Sección de cuenta */}
             <div style={{ marginBottom: 16 }}>
               <label
                 style={{ fontWeight: 600, display: "block", marginBottom: 8 }}
@@ -422,18 +436,19 @@ export default function ConceptsPanel({
               </div>
             </div>
 
+            {/* Mk-013 Concepts - Botones New y Edit */}
             {!showForm && (
               <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
                 <button
                   style={{ ...styles.btn, ...styles.btnPrimary }}
-                  onClick={handleNew}
+                  onClick={handleNew} // FP-06
                   disabled={!cuenta}
                 >
                   New
                 </button>
                 <button
                   style={{ ...styles.btn, ...styles.btnSecondary }}
-                  onClick={handleEdit}
+                  onClick={handleEdit} // FP-05
                   disabled={!selectedId}
                 >
                   Edit
@@ -441,6 +456,7 @@ export default function ConceptsPanel({
               </div>
             )}
 
+            {/* Mk-013 Concepts - Formulario de concepto */}
             {showForm && (
               <div
                 style={{
@@ -474,6 +490,7 @@ export default function ConceptsPanel({
                     />
                   </label>
 
+                  {/* Selector: Tipo (Income, Expense) */}
                   <div>
                     <div style={{ fontWeight: 600, marginBottom: 6 }}>
                       Type:
@@ -512,6 +529,7 @@ export default function ConceptsPanel({
                     </div>
                   </div>
 
+                  {/* Selector: Period (Daily, Weekly, Biweekly, Monthly) */}
                   <div>
                     <div style={{ fontWeight: 600, marginBottom: 6 }}>
                       Period:
@@ -535,12 +553,13 @@ export default function ConceptsPanel({
                     </select>
                   </div>
 
+                  {/* Botones de acción */}
                   <div style={{ display: "flex", gap: 8 }}>
                     <button
                       type="button"
                       style={{ ...styles.btn, ...styles.btnPrimary }}
                       disabled={saving || !cuenta}
-                      onClick={isEditing ? updateConcepto : createConcepto}
+                      onClick={isEditing ? updateConcepto : createConcepto} // FP-04 o FP-03
                     >
                       {saving ? (
                         <>
@@ -571,6 +590,7 @@ export default function ConceptsPanel({
               </div>
             )}
 
+            {/* Mk-013 Configuration - Lista de conceptos existentes */}
             <div>
               {loadingList ? (
                 <p>
@@ -628,6 +648,7 @@ export default function ConceptsPanel({
           </div>
         </div>
 
+        {/* Panel de detalles del concepto seleccionado */}
         <div style={styles.right}>
           <div style={styles.card}>
             <h3 style={{ margin: 0, marginBottom: 16 }}>
