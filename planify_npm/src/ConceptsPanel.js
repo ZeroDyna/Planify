@@ -58,7 +58,7 @@ export default function ConceptsPanel({
     />
   );
 
-  // FP-01: Obtener cuenta del usuario - funcion auxiliar de MK - 013
+  // FP-01: Obtener cuenta del usuario - funcion auxiliar de MK-013
   const fetchCuenta = async () => {
     setMessage("");
     try {
@@ -207,6 +207,7 @@ export default function ConceptsPanel({
   };
 
   // FP-04: Mk-013 Concepts - Actualizar concepto existente
+  // Acción: Botón Edit - modifica un concepto con su configuración
   const updateConcepto = async () => {
     setMessage("");
     setSuccessMessage("");
@@ -638,7 +639,13 @@ export default function ConceptsPanel({
                         <span style={styles.periodBadge}>{c.periodo}</span>
                       </div>
                     </div>
-                    <div style={{ fontSize: 12, color: "#6b7280" }}>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: "#6b7280",
+                        display: "none",
+                      }}
+                    >
                       ID: {c.id_concepto}
                     </div>
                   </div>
@@ -669,7 +676,7 @@ export default function ConceptsPanel({
                   );
                 return (
                   <div style={{ display: "grid", gap: 16 }}>
-                    <div>
+                    <div style={{ display: "none" }}>
                       <div
                         style={{
                           fontSize: 13,
