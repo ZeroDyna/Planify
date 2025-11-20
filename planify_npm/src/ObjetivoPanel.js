@@ -5,815 +5,1418 @@ import { Doughnut } from "react-chartjs-2";
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 export default class ObjetivoPanel extends React.Component {
-    constructor(props) {
-        super(props);
-        this.state = {
-            cuenta: null,
-            objetivos: [],
-            selectedId: null,
-            detalle: null,
-            loading: false,
-            loadingList: false,
-            message: "",
-            successMessage: "",
-            showForm: false,
-            form: {
-                fecha_objetivo: "",
-                monto_objetivo: "",
-                estado: "en_progreso",
-            },
-            creating: false,
-        };
-        this.estados = [
-            { value: "en_progreso", label: "En progreso" },
-            { value: "en_pausa", label: "En pausa" },
-            { value: "terminada", label: "Terminada" },
-        ];
+  constructor(props) {
+    super(props);
+    this.state = {
+      cuenta: null,
+      objetivos: [],
+      selectedId: null,
+      detalle: null,
+      loading: false,
+      loadingList: false,
+      message: "",
+      successMessage: "",
+      showForm: false,
+      form: {
+        fecha_objetivo: "",
+        monto_objetivo: "",
+      },
+      creating: false,
+      balanceTotal: 0,
+      balanceAsignado: 0, // Balance ya asignado a metas completadas
+    };
+  }
+
+  // FP-28: Obtiene la cuenta asociada al usuario autenticado
+  fetchCuenta = async () => {
+    this.setState({ message: "" });
+    const { SUPABASE_URL, accessToken, user } = this.props;
+    try {
+      const emailFromUser =
+        user?.email || user?.correo || user?.user?.email || user?._raw?.correo;
+      let url = `${SUPABASE_URL}/rest/v1/cuenta?select=correo_cuenta,nombre_cuenta&limit=1`;
+      if (emailFromUser) {
+        url = `${SUPABASE_URL}/rest/v1/cuenta?select=correo_cuenta,nombre_cuenta&correo_usuario=eq.${encodeURIComponent(
+          emailFromUser
+        )}&limit=1`;
+      }
+      const headersBase = {
+        "Content-Type": "application/json",
+        apikey: this.props.SUPABASE_KEY,
+      };
+      const headersAuth = accessToken
+        ? { ...headersBase, Authorization: `Bearer ${accessToken}` }
+        : headersBase;
+      const res = await fetch(url, { headers: headersAuth });
+      if (!res.ok) {
+        this.setState({
+          message: "No se pudo obtener la cuenta del usuario.",
+          cuenta: null,
+        });
+        return;
+      }
+      const data = await res.json();
+      if (!Array.isArray(data) || data.length === 0) {
+        this.setState({
+          message: "No hay cuenta asociada a este usuario.",
+          cuenta: null,
+        });
+        return;
+      }
+      const c = data[0];
+      this.setState({
+        cuenta: {
+          correo_cuenta: c.correo_cuenta,
+          nombre_cuenta: c.nombre_cuenta || c.correo_cuenta,
+        },
+        selectedId: null,
+        detalle: null,
+      });
+    } catch (err) {
+      console.error("fetchCuenta error:", err);
+      this.setState({
+        message: "Error de conexión al obtener la cuenta.",
+        cuenta: null,
+      });
+    }
+  };
+
+  // FP-29: Obtiene todas las metas/objetivos ordenadas por numero_objetivo
+  fetchObjetivos = async () => {
+    const { SUPABASE_URL, accessToken } = this.props;
+    const { cuenta } = this.state;
+    if (!cuenta) {
+      this.setState({ objetivos: [], selectedId: null });
+      return;
+    }
+    this.setState({ loadingList: true, message: "" });
+    try {
+      const encodedCorreo = encodeURIComponent(cuenta.correo_cuenta);
+      const url = `${SUPABASE_URL}/rest/v1/objetivo?select=*&correo_cuenta=eq.${encodedCorreo}&order=numero_objetivo.asc`;
+      const headersBase = {
+        "Content-Type": "application/json",
+        apikey: this.props.SUPABASE_KEY,
+      };
+      const headersAuth = accessToken
+        ? { ...headersBase, Authorization: `Bearer ${accessToken}` }
+        : headersBase;
+      const res = await fetch(url, { headers: headersAuth });
+      if (!res.ok) {
+        this.setState({
+          message: "Error al cargar metas.",
+          objetivos: [],
+          selectedId: null,
+          loadingList: false,
+        });
+        return;
+      }
+      const data = await res.json();
+
+      // Calcular progreso para cada objetivo
+      const objetivosConProgreso = this.calculateProgressForAll(data || []);
+
+      this.setState({
+        objetivos: objetivosConProgreso,
+        selectedId:
+          Array.isArray(data) && data.length > 0 ? data[0].id_objetivo : null,
+      });
+    } catch (err) {
+      console.error("fetchObjetivos error:", err);
+      this.setState({
+        message: "Error de conexión al cargar metas.",
+        objetivos: [],
+        selectedId: null,
+      });
+    } finally {
+      this.setState({ loadingList: false });
+    }
+  };
+
+  // FP-30: Consulta el siguiente número de objetivo
+  fetchNextNumeroObjetivo = async (correo_cuenta) => {
+    const { SUPABASE_URL, accessToken } = this.props;
+    const url = `${SUPABASE_URL}/rest/v1/objetivo?correo_cuenta=eq.${encodeURIComponent(
+      correo_cuenta
+    )}&select=numero_objetivo&order=numero_objetivo.desc&limit=1`;
+    const headersBase = {
+      "Content-Type": "application/json",
+      apikey: this.props.SUPABASE_KEY,
+    };
+    const headersAuth = accessToken
+      ? { ...headersBase, Authorization: `Bearer ${accessToken}` }
+      : headersBase;
+    const res = await fetch(url, { headers: headersAuth });
+    if (!res.ok) return 1;
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length === 0) return 1;
+    return (data[0].numero_objetivo || 0) + 1;
+  };
+
+  // FP-31: Crea una nueva meta (por defecto en "en_pausa" si hay otras activas)
+  createObjetivo = async (e) => {
+    e?.preventDefault();
+    this.setState({ message: "", successMessage: "" });
+    const { SUPABASE_URL, accessToken } = this.props;
+    const { cuenta, objetivos } = this.state;
+
+    if (!cuenta) {
+      this.setState({ message: "No hay cuenta asociada a tu usuario." });
+      return;
     }
 
-    // FP-28: Obtiene la cuenta asociada al usuario autenticado usando el correo.
-    // Si falla muestra error; si tiene éxito actualiza cuenta en el estado.
-    fetchCuenta = async () => {
-        this.setState({ message: "" });
-        const { SUPABASE_URL, accessToken, user } = this.props;
-        try {
-            const emailFromUser =
-                user?.email || user?.correo || user?.user?.email || user?._raw?.correo;
-            let url = `${SUPABASE_URL}/rest/v1/cuenta?select=correo_cuenta,nombre_cuenta&limit=1`;
-            if (emailFromUser) {
-                url = `${SUPABASE_URL}/rest/v1/cuenta?select=correo_cuenta,nombre_cuenta&correo_usuario=eq.${encodeURIComponent(
-                    emailFromUser,
-                )}&limit=1`;
-            }
-            const headersBase = {
+    const { fecha_objetivo, monto_objetivo } = this.state.form;
+
+    if (!fecha_objetivo || !monto_objetivo) {
+      this.setState({ message: "Completa fecha y monto." });
+      return;
+    }
+
+    const montoNum = Number(monto_objetivo);
+    if (montoNum <= 0) {
+      this.setState({ message: "El monto debe ser mayor a 0." });
+      return;
+    }
+
+    this.setState({ creating: true });
+    try {
+      const numero_objetivo = await this.fetchNextNumeroObjetivo(
+        cuenta.correo_cuenta
+      );
+
+      // Si es la primera meta, se crea activa. Si no, en pausa
+      const hayMetasActivas = objetivos.some((o) => o.estado === "en_progreso");
+      const estadoInicial = hayMetasActivas ? "en_pausa" : "en_progreso";
+
+      const body = {
+        correo_cuenta: cuenta.correo_cuenta,
+        fecha_objetivo,
+        monto_objetivo: montoNum,
+        estado: estadoInicial,
+        numero_objetivo,
+      };
+
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/objetivo`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: this.props.SUPABASE_KEY,
+          Authorization: accessToken ? `Bearer ${accessToken}` : "",
+          Prefer: "return=representation",
+        },
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        this.setState({
+          message: (data && data.message) || "Error al crear meta",
+          creating: false,
+        });
+        return;
+      }
+
+      await this.fetchObjetivos();
+      this.setState({
+        selectedId:
+          Array.isArray(data) && data.length ? data[0].id_objetivo : null,
+        successMessage: `Meta creada ${
+          estadoInicial === "en_progreso"
+            ? "y activada"
+            : "(en pausa - activa otra meta primero)"
+        }`,
+        form: { fecha_objetivo: "", monto_objetivo: "" },
+        showForm: false,
+      });
+    } catch (err) {
+      console.error("createObjetivo error:", err);
+      this.setState({ message: "Error de conexión al crear meta" });
+    } finally {
+      this.setState({ creating: false });
+      setTimeout(() => this.setState({ successMessage: "" }), 3000);
+    }
+  };
+
+  // FP-32: Calcula progreso secuencial meta por meta
+  calculateProgressForAll = (objetivos) => {
+    const { balanceTotal } = this.state;
+    let balanceRestante = balanceTotal;
+    let balanceAsignadoTotal = 0;
+
+    return objetivos.map((obj, idx) => {
+      const monto_objetivo = Number(obj.monto_objetivo) || 0;
+
+      // Solo las metas "terminadas" anteriores consumen balance
+      if (obj.estado === "terminada") {
+        balanceAsignadoTotal += monto_objetivo;
+        return {
+          ...obj,
+          progreso: monto_objetivo,
+          porcentaje: 100,
+        };
+      }
+
+      // Si la meta está "en_progreso", recibe el balance disponible
+      if (obj.estado === "en_progreso") {
+        // Balance disponible = balance total - balance ya asignado a metas completadas
+        const balanceDisponible = balanceTotal - balanceAsignadoTotal;
+        const progreso = Math.min(balanceDisponible, monto_objetivo);
+        const porcentaje =
+          monto_objetivo > 0 ? (progreso / monto_objetivo) * 100 : 0;
+
+        return {
+          ...obj,
+          progreso: Math.max(0, progreso),
+          porcentaje: Math.min(100, Math.max(0, porcentaje)),
+        };
+      }
+
+      // Si está "en_pausa", no tiene progreso
+      return {
+        ...obj,
+        progreso: 0,
+        porcentaje: 0,
+      };
+    });
+  };
+
+  // FP-33: Obtiene el detalle de una meta específica
+  fetchDetalle = async (id) => {
+    if (!id) {
+      this.setState({ detalle: null });
+      return;
+    }
+    this.setState({ loading: true, message: "" });
+    const { SUPABASE_URL, accessToken } = this.props;
+    try {
+      const headersBase = {
+        "Content-Type": "application/json",
+        apikey: this.props.SUPABASE_KEY,
+      };
+      const headersAuth = accessToken
+        ? { ...headersBase, Authorization: `Bearer ${accessToken}` }
+        : headersBase;
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/objetivo?id_objetivo=eq.${id}`,
+        { headers: headersAuth }
+      );
+      if (!res.ok) {
+        this.setState({
+          detalle: null,
+          loading: false,
+          message: "Error al cargar detalle de la meta.",
+        });
+        return;
+      }
+      const data = await res.json();
+      if (!Array.isArray(data) || data.length === 0) {
+        this.setState({
+          detalle: null,
+          loading: false,
+          message: "Meta no encontrada.",
+        });
+        return;
+      }
+
+      // Recalcular progreso con datos actuales
+      const objetivosActualizados = this.calculateProgressForAll(
+        this.state.objetivos
+      );
+      const detalleActualizado =
+        objetivosActualizados.find((o) => o.id_objetivo === id) || data[0];
+
+      this.setState({ detalle: detalleActualizado });
+    } catch (err) {
+      console.error("fetchDetalle error:", err);
+      this.setState({
+        detalle: null,
+        message: "Error de conexión al cargar detalle",
+      });
+    } finally {
+      this.setState({ loading: false });
+    }
+  };
+
+  // FP-34: Cambia el estado de una meta y gestiona la lógica de activación/completado
+  updateEstadoMeta = async (id, nuevoEstado) => {
+    const { objetivos, detalle } = this.state;
+    const metaActual = objetivos.find((o) => o.id_objetivo === id);
+
+    if (!metaActual) return;
+
+    // Validación: no permitir marcar como terminada si no está completa
+    if (
+      nuevoEstado === "terminada" &&
+      metaActual.progreso < metaActual.monto_objetivo
+    ) {
+      this.setState({
+        message:
+          "No puedes marcar como terminada una meta que aún no has cumplido.",
+      });
+      setTimeout(() => this.setState({ message: "" }), 3000);
+      return;
+    }
+
+    this.setState({ loading: true, message: "" });
+    const { SUPABASE_URL, accessToken } = this.props;
+
+    try {
+      // Si se está pausando una meta activa, no hacer nada más
+      // Si se está activando una meta, pausar todas las demás primero
+      if (nuevoEstado === "en_progreso") {
+        // Pausar todas las metas activas primero
+        const metasActivas = objetivos.filter(
+          (o) => o.estado === "en_progreso" && o.id_objetivo !== id
+        );
+
+        for (const meta of metasActivas) {
+          await fetch(
+            `${SUPABASE_URL}/rest/v1/objetivo?id_objetivo=eq.${meta.id_objetivo}`,
+            {
+              method: "PATCH",
+              headers: {
                 "Content-Type": "application/json",
                 apikey: this.props.SUPABASE_KEY,
-            };
-            const headersAuth = accessToken
-                ? { ...headersBase, Authorization: `Bearer ${accessToken}` }
-                : headersBase;
-            const res = await fetch(url, {
-                headers: headersAuth,
-            });
-            if (!res.ok) {
-                this.setState({
-                    message: "No se pudo obtener la cuenta del usuario.",
-                    cuenta: null,
-                });
-                return;
+                Authorization: accessToken ? `Bearer ${accessToken}` : "",
+              },
+              body: JSON.stringify({ estado: "en_pausa" }),
             }
-            const data = await res.json();
-            if (!Array.isArray(data) || data.length === 0) {
-                this.setState({
-                    message: "No hay cuenta asociada a este usuario.",
-                    cuenta: null,
-                });
-                return;
-            }
-            const c = data[0];
-            this.setState({
-                cuenta: {
-                    correo_cuenta: c.correo_cuenta,
-                    nombre_cuenta: c.nombre_cuenta || c.correo_cuenta,
-                },
-                selectedId: null,
-                detalle: null,
-            });
-        } catch (err) {
-            this.setState({
-                message: "Error de conexión al obtener la cuenta.",
-                cuenta: null,
-            });
+          );
         }
-    };
+      }
 
-    // FP-29: Obtiene todas las metas/objetivos de la cuenta seleccionada.
-    // Ordena por numero_objetivo y las guarda en el estado.
-    fetchObjetivos = async () => {
-        const { SUPABASE_URL, accessToken } = this.props;
-        const { cuenta } = this.state;
-        if (!cuenta) {
-            this.setState({ objetivos: [], selectedId: null });
-            return;
-        }
-        this.setState({ loadingList: true, message: "" });
-        try {
-            const encodedCorreo = encodeURIComponent(cuenta.correo_cuenta);
-            const url = `${SUPABASE_URL}/rest/v1/objetivo?select=*&correo_cuenta=eq.${encodedCorreo}&order=numero_objetivo.asc`;
-            const headersBase = {
-                "Content-Type": "application/json",
-                apikey: this.props.SUPABASE_KEY,
-            };
-            const headersAuth = accessToken
-                ? { ...headersBase, Authorization: `Bearer ${accessToken}` }
-                : headersBase;
-            const res = await fetch(url, {
-                headers: headersAuth,
-            });
-            if (!res.ok) {
-                this.setState({
-                    message: "Error al cargar metas.",
-                    objetivos: [],
-                    selectedId: null,
-                    loadingList: false,
-                });
-                return;
-            }
-            const data = await res.json();
-            this.setState({
-                objetivos: data || [],
-                selectedId:
-                    Array.isArray(data) && data.length > 0 ? data[0].id_objetivo : null,
-            });
-        } catch (err) {
-            this.setState({
-                message: "Error de conexión al cargar metas.",
-                objetivos: [],
-                selectedId: null,
-            });
-        } finally {
-            this.setState({ loadingList: false });
-        }
-    };
-
-    // FP-30: Consulta el siguiente número de objetivo para una cuenta.
-    // Devuelve el siguiente número consecutivo según metas existentes.
-    fetchNextNumeroObjetivo = async (correo_cuenta) => {
-        const { SUPABASE_URL, accessToken } = this.props;
-        const url = `${SUPABASE_URL}/rest/v1/objetivo?correo_cuenta=eq.${encodeURIComponent(
-            correo_cuenta,
-        )}&select=numero_objetivo&order=numero_objetivo.desc&limit=1`;
-        const headersBase = {
+      // Actualizar la meta seleccionada
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/objetivo?id_objetivo=eq.${id}`,
+        {
+          method: "PATCH",
+          headers: {
             "Content-Type": "application/json",
             apikey: this.props.SUPABASE_KEY,
-        };
-        const headersAuth = accessToken
-            ? { ...headersBase, Authorization: `Bearer ${accessToken}` }
-            : headersBase;
-        const res = await fetch(url, {
-            headers: headersAuth,
+            Authorization: accessToken ? `Bearer ${accessToken}` : "",
+          },
+          body: JSON.stringify({ estado: nuevoEstado }),
+        }
+      );
+
+      if (!res.ok) {
+        this.setState({
+          message: "No se pudo actualizar el estado.",
+          loading: false,
         });
-        if (!res.ok) return 1;
-        const data = await res.json();
-        if (!Array.isArray(data) || data.length === 0) return 1;
-        return (data[0].numero_objetivo || 0) + 1;
-    };
+        return;
+      }
 
-    // FP-31: Crea una nueva meta para la cuenta, validando los campos.
-    // Actualiza la lista de metas y muestra mensaje de éxito o error.
-    createObjetivo = async (e) => {
-        e?.preventDefault();
-        this.setState({ message: "", successMessage: "" });
-        const { SUPABASE_URL, accessToken } = this.props;
-        const { cuenta, form } = this.state;
-        if (!cuenta) {
-            this.setState({ message: "No hay cuenta asociada a tu usuario." });
-            return;
-        }
-        if (!form.fecha_objetivo || !form.monto_objetivo) {
-            this.setState({ message: "Completa fecha y monto." });
-            return;
-        }
-        this.setState({ creating: true });
-        try {
-            const numero_objetivo = await this.fetchNextNumeroObjetivo(
-                cuenta.correo_cuenta,
-            );
-            const body = {
-                correo_cuenta: cuenta.correo_cuenta,
-                fecha_objetivo: form.fecha_objetivo,
-                monto_objetivo: Number(form.monto_objetivo),
-                estado: form.estado,
-                numero_objetivo,
-            };
-            const res = await fetch(`${SUPABASE_URL}/rest/v1/objetivo`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    apikey: this.props.SUPABASE_KEY,
-                    Authorization: accessToken ? `Bearer ${accessToken}` : "",
-                    Prefer: "return=representation",
-                },
-                body: JSON.stringify(body),
-            });
-            const data = await res.json().catch(() => null);
-            if (!res.ok) {
-                this.setState({
-                    message:
-                        (data && data.message) ||
-                        JSON.stringify(data) ||
-                        "Error al crear meta",
-                    creating: false,
-                });
-                return;
-            }
-            await this.fetchObjetivos();
-            this.setState({
-                selectedId:
-                    Array.isArray(data) && data.length ? data[0].id_objetivo : null,
-                successMessage: "Meta creada correctamente",
-                form: {
-                    fecha_objetivo: "",
-                    monto_objetivo: "",
-                    estado: "en_progreso",
-                },
-                showForm: false,
-            });
-        } catch (err) {
-            this.setState({ message: "Error de conexión al crear meta" });
-        } finally {
-            this.setState({ creating: false });
-            setTimeout(() => this.setState({ successMessage: "" }), 2500);
-        }
-    };
+      // Si se completó una meta, activar automáticamente la siguiente en pausa
+      if (nuevoEstado === "terminada") {
+        const siguienteMeta = objetivos
+          .filter((o) => o.estado === "en_pausa")
+          .sort((a, b) => a.numero_objetivo - b.numero_objetivo)[0];
 
-    // FP-32: Calcula un progreso simulado de la meta (40%).
-    // Debes cambiar esto por la lógica real de progreso.
-    calculateFakeProgress = (objetivo) => {
-        const monto_objetivo = Number(objetivo.monto_objetivo) || 0;
-        const progreso = monto_objetivo * 0.4;
-        const porcentaje = monto_objetivo ? (progreso / monto_objetivo) * 100 : 0;
-        return {
-            ...objetivo,
-            progreso,
-            porcentaje: Math.min(100, Math.max(0, porcentaje)),
-        };
-    };
-
-    // FP-33: Obtiene el detalle de la meta seleccionada, usando su id.
-    // Aplica cálculo de progreso y actualiza el estado.
-    fetchDetalle = async (id) => {
-        if (!id) {
-            this.setState({ detalle: null });
-            return;
-        }
-        this.setState({ loading: true, message: "" });
-        const { SUPABASE_URL, accessToken } = this.props;
-        try {
-            const headersBase = {
+        if (siguienteMeta) {
+          await fetch(
+            `${SUPABASE_URL}/rest/v1/objetivo?id_objetivo=eq.${siguienteMeta.id_objetivo}`,
+            {
+              method: "PATCH",
+              headers: {
                 "Content-Type": "application/json",
                 apikey: this.props.SUPABASE_KEY,
-            };
-            const headersAuth = accessToken
-                ? { ...headersBase, Authorization: `Bearer ${accessToken}` }
-                : headersBase;
-            const res = await fetch(
-                `${SUPABASE_URL}/rest/v1/objetivo?id_objetivo=eq.${id}`,
-                { headers: headersAuth },
-            );
-            if (!res.ok) {
-                this.setState({
-                    detalle: null,
-                    loading: false,
-                    message: "Error al cargar detalle de la meta.",
-                });
-                return;
+                Authorization: accessToken ? `Bearer ${accessToken}` : "",
+              },
+              body: JSON.stringify({ estado: "en_progreso" }),
             }
-            const data = await res.json();
-            if (!Array.isArray(data) || data.length === 0) {
-                this.setState({
-                    detalle: null,
-                    loading: false,
-                    message: "Meta no encontrada.",
-                });
-                return;
-            }
-            this.setState({ detalle: this.calculateFakeProgress(data[0]) });
-        } catch (err) {
-            this.setState({
-                detalle: null,
-                message: "Error de conexión al cargar detalle",
-            });
-        } finally {
-            this.setState({ loading: false });
+          );
+          this.setState({
+            successMessage: `¡Meta completada! Meta #${siguienteMeta.numero_objetivo} ahora está activa.`,
+          });
+        } else {
+          this.setState({ successMessage: "¡Felicidades! Meta completada." });
         }
-    };
+      } else if (nuevoEstado === "en_progreso") {
+        this.setState({ successMessage: "Meta activada correctamente" });
+      } else {
+        this.setState({ successMessage: "Meta pausada" });
+      }
 
-    // FP-34: Actualiza el estado (en_progreso, en_pausa, terminada) de una meta seleccionada.
-    // Refresca lista y detalle tras el cambio.
-    updateEstadoMeta = async (id, nuevoEstado) => {
-        this.setState({ loading: true, message: "" });
-        const { SUPABASE_URL, accessToken } = this.props;
-        try {
-            const res = await fetch(
-                `${SUPABASE_URL}/rest/v1/objetivo?id_objetivo=eq.${id}`,
-                {
-                    method: "PATCH",
-                    headers: {
-                        "Content-Type": "application/json",
-                        apikey: this.props.SUPABASE_KEY,
-                        Authorization: accessToken ? `Bearer ${accessToken}` : "",
-                    },
-                    body: JSON.stringify({ estado: nuevoEstado }),
-                },
-            );
-            if (!res.ok) {
-                this.setState({
-                    message: "No se pudo actualizar el estado.",
-                    loading: false,
-                });
-                return;
-            }
-            await this.fetchObjetivos();
-            await this.fetchDetalle(id);
-            this.setState({ successMessage: "Estado actualizado" });
-            setTimeout(() => this.setState({ successMessage: "" }), 2000);
-        } catch {
-            this.setState({ message: "Error al actualizar estado." });
-        } finally {
-            this.setState({ loading: false });
-        }
-    };
+      await this.fetchObjetivos();
+      await this.fetchDetalle(id);
 
-    // Helpers: formateo, spinner, chart, fecha, estilos...
-    currency = (v) =>
-        new Intl.NumberFormat("es-ES", {
-            style: "currency",
-            currency: "EUR",
-            maximumFractionDigits: 2,
-        }).format(Number(v || 0));
+      setTimeout(() => this.setState({ successMessage: "" }), 3000);
+    } catch (err) {
+      console.error("updateEstadoMeta error:", err);
+      this.setState({ message: "Error al actualizar estado." });
+    } finally {
+      this.setState({ loading: false });
+    }
+  };
 
-    percent = (v) => `${Number(v || 0).toFixed(2)}%`;
+  // FP-35: Calcula el balance real de la cuenta desde movimientos
+  fetchBalanceTotal = async () => {
+    const { SUPABASE_URL, accessToken } = this.props;
+    const { cuenta } = this.state;
 
-    Spinner = ({ size = 18 }) => (
-        <span
-            role="status"
-            aria-live="polite"
-            style={{
-                width: size,
-                height: size,
-                border: "3px solid rgba(0,0,0,0.08)",
-                borderTop: "3px solid #6366f1",
-                borderRadius: "50%",
-                animation: "spin 0.8s linear infinite",
-                display: "inline-block",
-                verticalAlign: "middle",
-            }}
-        />
-    );
-
-    asDateString = (input) => {
-        if (!input) return new Date().toISOString().slice(0, 10);
-        if (/^\d{4}-\d{2}-\d{2}$/.test(input)) return input;
-        const d = new Date(input);
-        if (isNaN(d.getTime())) return new Date().toISOString().slice(0, 10);
-        return d.toISOString().slice(0, 10);
-    };
-
-    chartData = (monto_objetivo = 0, progreso = 0) => {
-        const prog = Number(progreso) || 0;
-        const objetivo = Number(monto_objetivo) || 0;
-        const restante = Math.max(objetivo - prog, 0);
-        return {
-            labels: ["Progreso", "Restante"],
-            datasets: [
-                {
-                    data: [prog, restante],
-                    backgroundColor: ["#4f46e5", "#e5e7eb"],
-                    hoverBackgroundColor: ["#3730a3", "#d1d5db"],
-                    borderWidth: 0,
-                },
-            ],
-        };
-    };
-
-    // FP-35: Al montar el componente, obtiene la cuenta.
-    componentDidMount() {
-        this.fetchCuenta();
+    if (!cuenta) {
+      this.setState({ balanceTotal: 0 });
+      return;
     }
 
-    // FP-36: Actualiza datos si cambian accessToken, user, cuenta o selectedId.
-    componentDidUpdate(prevProps, prevState) {
-        if (
-            this.props.accessToken !== prevProps.accessToken ||
-            this.props.user !== prevProps.user
-        ) {
-            this.fetchCuenta();
-        }
-        if (
-            this.state.cuenta &&
-            (!prevState.cuenta ||
-                this.state.cuenta.correo_cuenta !== prevState.cuenta.correo_cuenta)
-        ) {
-            this.fetchObjetivos();
-        }
-        if (
-            this.state.selectedId &&
-            (this.state.selectedId !== prevState.selectedId ||
-                (this.state.cuenta &&
-                    prevState.cuenta &&
-                    this.state.cuenta.correo_cuenta !== prevState.cuenta.correo_cuenta))
-        ) {
-            this.fetchDetalle(this.state.selectedId);
-        }
-        if (!this.state.selectedId && prevState.selectedId) {
-            this.setState({ detalle: null });
-        }
-    }
+    try {
+      const headersBase = {
+        "Content-Type": "application/json",
+        apikey: this.props.SUPABASE_KEY,
+      };
+      const headersAuth = accessToken
+        ? { ...headersBase, Authorization: `Bearer ${accessToken}` }
+        : headersBase;
 
-    styles = {
-        container: { display: "flex", gap: 20, flexWrap: "wrap", padding: 12 },
-        left: { flex: "1 1 360px", minWidth: 320 },
-        right: { flex: "1 1 420px", minWidth: 320 },
-        card: {
-            padding: 12,
-            borderRadius: 10,
-            background: "white",
-            boxShadow: "0 6px 18px rgba(15,23,42,0.06)",
+      const urlConcepto = `${SUPABASE_URL}/rest/v1/movimiento_concepto?select=*,concepto:id_concepto(tipo)&correo_cuenta=eq.${encodeURIComponent(
+        cuenta.correo_cuenta
+      )}`;
+
+      const resConcepto = await fetch(urlConcepto, { headers: headersAuth });
+
+      const urlEspontaneo = `${SUPABASE_URL}/rest/v1/movimiento_espontaneo?select=*&correo_cuenta=eq.${encodeURIComponent(
+        cuenta.correo_cuenta
+      )}`;
+
+      const resEspontaneo = await fetch(urlEspontaneo, {
+        headers: headersAuth,
+      });
+
+      let totalIncome = 0;
+      let totalExpense = 0;
+
+      if (resConcepto.ok) {
+        const dataConcepto = await resConcepto.json();
+        (dataConcepto || []).forEach((m) => {
+          const tipo = m.concepto?.tipo;
+          const monto = Number(m.monto || 0);
+          if (tipo === true) {
+            totalIncome += monto;
+          } else if (tipo === false) {
+            totalExpense += monto;
+          }
+        });
+      }
+
+      if (resEspontaneo.ok) {
+        const dataEspontaneo = await resEspontaneo.json();
+        (dataEspontaneo || []).forEach((m) => {
+          const monto = Number(m.monto || 0);
+          if (m.tipo === true) {
+            totalIncome += monto;
+          } else if (m.tipo === false) {
+            totalExpense += monto;
+          }
+        });
+      }
+
+      const balance = totalIncome - totalExpense;
+      this.setState({ balanceTotal: Math.max(0, balance) });
+    } catch (err) {
+      console.error("fetchBalanceTotal error:", err);
+      this.setState({ balanceTotal: 0 });
+    }
+  };
+
+  currency = (v) =>
+    new Intl.NumberFormat("es-ES", {
+      style: "currency",
+      currency: "EUR",
+      maximumFractionDigits: 2,
+    }).format(Number(v || 0));
+
+  percent = (v) => `${Number(v || 0).toFixed(1)}%`;
+
+  Spinner = ({ size = 18 }) => (
+    <span
+      role="status"
+      aria-live="polite"
+      style={{
+        width: size,
+        height: size,
+        border: "3px solid rgba(0,0,0,0.08)",
+        borderTop: "3px solid #6366f1",
+        borderRadius: "50%",
+        animation: "spin 0.8s linear infinite",
+        display: "inline-block",
+        verticalAlign: "middle",
+      }}
+    />
+  );
+
+  chartData = (monto_objetivo = 0, progreso = 0) => {
+    const prog = Number(progreso) || 0;
+    const objetivo = Number(monto_objetivo) || 0;
+    const restante = Math.max(objetivo - prog, 0);
+    return {
+      labels: ["Progreso", "Restante"],
+      datasets: [
+        {
+          data: [prog, restante],
+          backgroundColor: ["#4f46e5", "#e5e7eb"],
+          hoverBackgroundColor: ["#3730a3", "#d1d5db"],
+          borderWidth: 0,
         },
-        smallCard: {
-            padding: 10,
-            borderRadius: 8,
-            background: "#fff",
-            boxShadow: "0 4px 12px rgba(2,6,23,0.04)",
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-        },
-        progressOuter: {
-            width: "100%",
-            height: 14,
-            background: "#f3f4f6",
-            borderRadius: 8,
-            overflow: "hidden",
-        },
-        progressInner: (p) => ({
-            width: `${Math.max(0, Math.min(100, p))}%`,
-            height: "100%",
-            background: "#6366f1",
-        }),
+      ],
     };
-    render() {
-        const {
-            cuenta,
-            objetivos,
-            selectedId,
-            detalle,
-            loading,
-            loadingList,
-            message,
-            successMessage,
-            showForm,
-            form,
-            creating,
-        } = this.state;
-        const { Spinner, styles, estados } = this;
-        return (
-            <>
-                <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-                <div style={styles.container}>
-                    <div style={styles.left}>
-                        <div style={styles.card}>
-                            <div
-                                style={{
-                                    display: "flex",
-                                    justifyContent: "space-between",
-                                    alignItems: "center",
-                                }}
-                            >
-                                <div>
-                                    <h3 style={{ margin: 0 }}>Tus metas</h3>
-                                    <p style={{ margin: 0, color: "#6b7280" }}>
-                                        Crea y gestiona tus objetivos de ahorro.
-                                    </p>
-                                </div>
-                                <div style={{ display: "flex", gap: 8 }}>
-                                    <button
-                                        className="btn"
-                                        onClick={() => {
-                                            this.fetchCuenta();
-                                            this.fetchObjetivos();
-                                        }}
-                                    >
-                                        {loadingList ? <Spinner /> : "Refrescar"}
-                                    </button>
-                                </div>
-                            </div>
-                            {message && (
-                                <div style={{ color: "#b91c1c", marginTop: 8 }}>{message}</div>
-                            )}
-                            {successMessage && (
-                                <div style={{ color: "#065f46", marginTop: 8 }}>
-                                    {successMessage}
-                                </div>
-                            )}
-                            <div style={{ marginTop: 12 }}>
-                                <label
-                                    style={{ fontWeight: 700, display: "block", marginBottom: 6 }}
-                                >
-                                    Cuenta
-                                </label>
-                                <div
-                                    style={{
-                                        padding: 10,
-                                        borderRadius: 8,
-                                        background: "#f8fafc",
-                                        color: "#111827",
-                                    }}
-                                >
-                                    {cuenta
-                                        ? cuenta.nombre_cuenta || cuenta.correo_cuenta
-                                        : "No hay cuenta disponible"}
-                                </div>
-                                <div style={{ marginTop: 10 }}>
-                                    <button
-                                        className="btn btn-primary"
-                                        onClick={() =>
-                                            this.setState((s) => ({ showForm: !s.showForm }))
-                                        }
-                                        style={{
-                                            background: "linear-gradient(135deg,#6366f1,#7c3aed)",
-                                            color: "#fff",
-                                            padding: "8px 12px",
-                                            borderRadius: 8,
-                                            border: "none",
-                                        }}
-                                    >
-                                        {showForm ? "Ocultar formulario" : "Crear meta"}
-                                    </button>
-                                </div>
-                            </div>
-                            {showForm && (
-                                <details open style={{ marginTop: 12 }}>
-                                    <summary style={{ fontWeight: 700 }}>Nueva meta</summary>
-                                    <form
-                                        onSubmit={this.createObjetivo}
-                                        style={{ marginTop: 10, display: "grid", gap: 8 }}
-                                    >
-                                        <label>
-                                            Fecha objetivo
-                                            <input
-                                                type="date"
-                                                className="form-input"
-                                                value={form.fecha_objetivo}
-                                                onChange={(e) =>
-                                                    this.setState({
-                                                        form: { ...form, fecha_objetivo: e.target.value },
-                                                    })
-                                                }
-                                            />
-                                        </label>
-                                        <label>
-                                            Monto objetivo
-                                            <input
-                                                type="number"
-                                                step="0.01"
-                                                className="form-input"
-                                                value={form.monto_objetivo}
-                                                onChange={(e) =>
-                                                    this.setState({
-                                                        form: { ...form, monto_objetivo: e.target.value },
-                                                    })
-                                                }
-                                                placeholder="1000.00"
-                                            />
-                                        </label>
-                                        <label>
-                                            Estado
-                                            <select
-                                                className="form-input"
-                                                value={form.estado}
-                                                onChange={(e) =>
-                                                    this.setState({
-                                                        form: { ...form, estado: e.target.value },
-                                                    })
-                                                }
-                                            >
-                                                {estados.map((opt) => (
-                                                    <option key={opt.value} value={opt.value}>
-                                                        {opt.label}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </label>
-                                        <div style={{ display: "flex", gap: 8 }}>
-                                            <button
-                                                className="btn btn-primary"
-                                                type="submit"
-                                                disabled={creating || !cuenta}
-                                            >
-                                                {creating ? (
-                                                    <>
-                                                        <Spinner /> Creando...
-                                                    </>
-                                                ) : (
-                                                    "Crear meta"
-                                                )}
-                                            </button>
-                                            <button
-                                                className="btn"
-                                                type="button"
-                                                onClick={() =>
-                                                    this.setState({
-                                                        form: {
-                                                            fecha_objetivo: "",
-                                                            monto_objetivo: "",
-                                                            estado: "en_progreso",
-                                                        },
-                                                    })
-                                                }
-                                            >
-                                                Limpiar
-                                            </button>
-                                        </div>
-                                    </form>
-                                </details>
-                            )}
-                            <div style={{ marginTop: 12 }}>
-                                {loadingList ? (
-                                    <p>
-                                        <Spinner /> Cargando...
-                                    </p>
-                                ) : objetivos.length === 0 ? (
-                                    <p style={{ marginTop: 8 }}>
-                                        No tienes metas creadas todavía.
-                                    </p>
-                                ) : (
-                                    objetivos.map((o) => (
-                                        <div key={o.id_objetivo} style={styles.smallCard}>
-                                            <div style={{ width: 60 }}>
-                                                <Doughnut
-                                                    data={this.chartData(
-                                                        o.monto_objetivo,
-                                                        o.progreso || 0,
-                                                    )}
-                                                    options={{
-                                                        cutout: "70%",
-                                                        plugins: { legend: { display: false } },
-                                                    }}
-                                                />
-                                            </div>
-                                            <div style={{ flex: 1 }}>
-                                                <div
-                                                    style={{
-                                                        display: "flex",
-                                                        justifyContent: "space-between",
-                                                    }}
-                                                >
-                                                    <div style={{ fontWeight: 700 }}>
-                                                        Meta #{o.numero_objetivo} ·{" "}
-                                                        {this.currency(o.monto_objetivo)}
-                                                    </div>
-                                                    <div style={{ color: "#6b7280" }}>
-                                                        {o.fecha_objetivo}
-                                                    </div>
-                                                </div>
-                                                <div style={{ marginTop: 6 }}>
-                                                    <div style={styles.progressOuter}>
-                                                        <div
-                                                            style={styles.progressInner(o.porcentaje || 0)}
-                                                        />
-                                                    </div>
-                                                    <div
-                                                        style={{
-                                                            fontSize: 12,
-                                                            color: "#6b7280",
-                                                            marginTop: 4,
-                                                        }}
-                                                    >
-                                                        {o.progreso
-                                                            ? `${this.currency(o.progreso)} · ${this.percent(o.porcentaje)}`
-                                                            : "Sin progreso"}
-                                                    </div>
-                                                </div>
-                                                <div style={{ fontSize: 12, marginTop: 4 }}>
-                                                    Estado:{" "}
-                                                    <strong>
-                                                        {estados.find((e) => e.value === o.estado)?.label ||
-                                                            o.estado}
-                                                    </strong>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <button
-                                                    className="btn"
-                                                    onClick={() =>
-                                                        this.setState({ selectedId: o.id_objetivo })
-                                                    }
-                                                >
-                                                    Ver
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                    <div style={styles.right}>
-                        <div style={styles.card}>
-                            <h3 style={{ margin: 0 }}>Detalle & progreso</h3>
-                            {loading ? (
-                                <p>
-                                    <Spinner /> Cargando detalle...
-                                </p>
-                            ) : !detalle ? (
-                                <p>Selecciona una meta para ver su progreso.</p>
-                            ) : (
-                                <div style={{ marginTop: 12 }}>
-                                    <div
-                                        style={{ display: "flex", gap: 16, alignItems: "center" }}
-                                    >
-                                        <div style={{ width: 160 }}>
-                                            <Doughnut
-                                                data={this.chartData(
-                                                    detalle.monto_objetivo,
-                                                    detalle.progreso,
-                                                )}
-                                                options={{
-                                                    cutout: "70%",
-                                                    plugins: { legend: { position: "bottom" } },
-                                                }}
-                                            />
-                                        </div>
-                                        <div style={{ flex: 1 }}>
-                                            <h4 style={{ margin: 0 }}>
-                                                Meta #{detalle.numero_objetivo}
-                                            </h4>
-                                            <p style={{ margin: "6px 0" }}>
-                                                Cuenta: <strong>{detalle.correo_cuenta}</strong>
-                                            </p>
-                                            <p style={{ margin: "6px 0" }}>
-                                                Fecha objetivo:{" "}
-                                                <strong>{detalle.fecha_objetivo}</strong>
-                                            </p>
-                                            <div style={{ marginTop: 8 }}>
-                                                <div>
-                                                    Objetivo:{" "}
-                                                    <strong>
-                                                        {this.currency(detalle.monto_objetivo)}
-                                                    </strong>
-                                                </div>
-                                                <div>
-                                                    Progreso:{" "}
-                                                    <strong>
-                                                        {this.currency(detalle.progreso)} ·{" "}
-                                                        {this.percent(detalle.porcentaje)}
-                                                    </strong>
-                                                </div>
-                                            </div>
-                                            <div style={{ marginTop: 8 }}>
-                                                Estado:{" "}
-                                                <select
-                                                    value={detalle.estado}
-                                                    onChange={async (e) => {
-                                                        // Validación: no permite marcar terminada si no se cumplió
-                                                        if (
-                                                            e.target.value === "terminada" &&
-                                                            detalle.progreso < detalle.monto_objetivo
-                                                        ) {
-                                                            alert(
-                                                                "No puedes marcar como terminada una meta que aún no has cumplido.",
-                                                            );
-                                                            return;
-                                                        }
-                                                        await this.updateEstadoMeta(
-                                                            detalle.id_objetivo,
-                                                            e.target.value,
-                                                        );
-                                                        if (e.target.value === "terminada") {
-                                                            alert("¡Felicidades! Has terminado tu meta.");
-                                                        } else if (e.target.value === "en_pausa") {
-                                                            alert(
-                                                                "Meta en pausa. No podrás avanzar hasta reanudarla.",
-                                                            );
-                                                        }
-                                                    }}
-                                                    disabled={loading || detalle.estado === "terminada"}
-                                                >
-                                                    {estados.map((opt) => (
-                                                        <option key={opt.value} value={opt.value}>
-                                                            {opt.label}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                            <div style={{ marginTop: 12 }}>
-                                                <div style={styles.progressOuter}>
-                                                    <div
-                                                        style={styles.progressInner(detalle.porcentaje)}
-                                                    />
-                                                </div>
-                                            </div>
-                                            {detalle.estado === "terminada" && (
-                                                <div style={{ color: "#15803d", marginTop: 8 }}>
-                                                    ¡Meta completada!
-                                                </div>
-                                            )}
-                                            {detalle.estado === "en_pausa" && (
-                                                <div style={{ color: "#a16207", marginTop: 8 }}>
-                                                    Meta en pausa. No puedes avanzar en esta meta hasta
-                                                    reanudarla.
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </>
+  };
+
+  componentDidMount() {
+    this.fetchCuenta();
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    if (
+      this.props.accessToken !== prevProps.accessToken ||
+      this.props.user !== prevProps.user
+    ) {
+      this.fetchCuenta();
+    }
+    if (
+      this.state.cuenta &&
+      (!prevState.cuenta ||
+        this.state.cuenta.correo_cuenta !== prevState.cuenta.correo_cuenta)
+    ) {
+      this.fetchBalanceTotal();
+      this.fetchObjetivos();
+    }
+    if (
+      this.state.selectedId &&
+      (this.state.selectedId !== prevState.selectedId ||
+        (this.state.cuenta &&
+          prevState.cuenta &&
+          this.state.cuenta.correo_cuenta !== prevState.cuenta.correo_cuenta))
+    ) {
+      this.fetchDetalle(this.state.selectedId);
+    }
+    if (!this.state.selectedId && prevState.selectedId) {
+      this.setState({ detalle: null });
+    }
+    if (
+      this.state.balanceTotal !== prevState.balanceTotal &&
+      this.state.objetivos.length > 0
+    ) {
+      const objetivosActualizados = this.calculateProgressForAll(
+        this.state.objetivos
+      );
+      this.setState({ objetivos: objetivosActualizados });
+
+      if (this.state.detalle) {
+        const detalleActualizado = objetivosActualizados.find(
+          (o) => o.id_objetivo === this.state.detalle.id_objetivo
         );
+        if (detalleActualizado) {
+          this.setState({ detalle: detalleActualizado });
+        }
+      }
     }
+  }
+
+  styles = {
+    container: { display: "flex", gap: 20, flexWrap: "wrap", padding: 12 },
+    left: { flex: "1 1 360px", minWidth: 320 },
+    right: { flex: "1 1 420px", minWidth: 320 },
+    card: {
+      padding: 14,
+      borderRadius: 10,
+      background: "white",
+      boxShadow: "0 6px 18px rgba(15,23,42,0.06)",
+    },
+    smallCard: (isActive) => ({
+      padding: 12,
+      borderRadius: 8,
+      background: "#fff",
+      boxShadow: isActive
+        ? "0 4px 16px rgba(99,102,241,0.2)"
+        : "0 4px 12px rgba(2,6,23,0.04)",
+      display: "flex",
+      alignItems: "center",
+      gap: 12,
+      marginBottom: 10,
+      border: isActive ? "2px solid #6366f1" : "1px solid #f3f4f6",
+      position: "relative",
+    }),
+    progressOuter: {
+      width: "100%",
+      height: 14,
+      background: "#f3f4f6",
+      borderRadius: 8,
+      overflow: "hidden",
+    },
+    progressInner: (p) => ({
+      width: `${Math.max(0, Math.min(100, p))}%`,
+      height: "100%",
+      background: "linear-gradient(90deg, #6366f1, #8b5cf6)",
+      transition: "width 0.3s ease",
+    }),
+  };
+
+  render() {
+    const {
+      cuenta,
+      objetivos,
+      selectedId,
+      detalle,
+      loading,
+      loadingList,
+      message,
+      successMessage,
+      showForm,
+      form,
+      creating,
+      balanceTotal,
+    } = this.state;
+    const { Spinner, styles } = this;
+
+    const metaActiva = objetivos.find((o) => o.estado === "en_progreso");
+
+    return (
+      <>
+        <style>{`
+                    @keyframes spin { to { transform: rotate(360deg); } }
+                    .btn {
+                        padding: 8px 12px;
+                        borderRadius: 8px;
+                        border: none;
+                        cursor: pointer;
+                        fontSize: 14px;
+                        fontWeight: 500;
+                        background: #f3f4f6;
+                        color: #374151;
+                        transition: all 0.2s;
+                    }
+                    .btn:hover { background: #e5e7eb; }
+                    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+                    .btn-primary {
+                        background: linear-gradient(135deg,#6366f1,#7c3aed);
+                        color: #fff;
+                    }
+                    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(99,102,241,0.3); }
+                    .btn-success {
+                        background: linear-gradient(135deg,#10b981,#059669);
+                        color: #fff;
+                    }
+                    .btn-warning {
+                        background: linear-gradient(135deg,#f59e0b,#d97706);
+                        color: #fff;
+                    }
+                    .form-input {
+                        width: 100%;
+                        padding: 8px;
+                        borderRadius: 6px;
+                        border: 1px solid #e5e7eb;
+                        marginTop: 4px;
+                    }
+                    .badge {
+                        padding: 4px 10px;
+                        borderRadius: 6px;
+                        fontSize: 12px;
+                        fontWeight: 600;
+                    }
+                    .badge-active {
+                        background: #dbeafe;
+                        color: #1e40af;
+                    }
+                    .badge-paused {
+                        background: #fef3c7;
+                        color: #92400e;
+                    }
+                    .badge-completed {
+                        background: #d1fae5;
+                        color: #065f46;
+                    }
+                `}</style>
+        <div style={styles.container}>
+          <div style={styles.left}>
+            <div style={styles.card}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 12,
+                }}
+              >
+                <div>
+                  <h3 style={{ margin: 0 }}>Tus metas</h3>
+                  <p
+                    style={{ margin: "4px 0", color: "#6b7280", fontSize: 14 }}
+                  >
+                    Progresa meta por meta secuencialmente
+                  </p>
+                </div>
+                <button
+                  className="btn"
+                  onClick={async () => {
+                    await this.fetchCuenta();
+                    await this.fetchBalanceTotal();
+                    await this.fetchObjetivos();
+                  }}
+                >
+                  {loadingList ? <Spinner /> : "Refrescar"}
+                </button>
+              </div>
+
+              {message && (
+                <div
+                  style={{
+                    color: "#b91c1c",
+                    marginBottom: 12,
+                    padding: 10,
+                    background: "#fee2e2",
+                    borderRadius: 6,
+                    fontSize: 14,
+                  }}
+                >
+                  {message}
+                </div>
+              )}
+              {successMessage && (
+                <div
+                  style={{
+                    color: "#065f46",
+                    marginBottom: 12,
+                    padding: 10,
+                    background: "#d1fae5",
+                    borderRadius: 6,
+                    fontSize: 14,
+                  }}
+                >
+                  {successMessage}
+                </div>
+              )}
+
+              {/* Balance total */}
+              <div
+                style={{
+                  marginBottom: 12,
+                  padding: 12,
+                  background: "linear-gradient(135deg, #f0f9ff, #e0f2fe)",
+                  borderRadius: 8,
+                  border: "1px solid #bae6fd",
+                }}
+              >
+                <div
+                  style={{ fontSize: 13, color: "#0369a1", marginBottom: 4 }}
+                >
+                  Balance total disponible
+                </div>
+                <div
+                  style={{ fontSize: 24, fontWeight: 700, color: "#0c4a6e" }}
+                >
+                  {this.currency(balanceTotal)}
+                </div>
+                {metaActiva && (
+                  <div style={{ fontSize: 12, color: "#0369a1", marginTop: 6 }}>
+                    📍 Progresando en Meta #{metaActiva.numero_objetivo}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ marginBottom: 12 }}>
+                <label
+                  style={{ fontWeight: 600, display: "block", marginBottom: 6 }}
+                >
+                  Cuenta
+                </label>
+                <div
+                  style={{
+                    padding: 10,
+                    borderRadius: 8,
+                    background: "#f8fafc",
+                    color: "#111827",
+                    fontSize: 14,
+                  }}
+                >
+                  {cuenta
+                    ? cuenta.nombre_cuenta || cuenta.correo_cuenta
+                    : "No hay cuenta disponible"}
+                </div>
+                <div style={{ marginTop: 10 }}>
+                  <button
+                    className="btn btn-primary"
+                    onClick={() =>
+                      this.setState((s) => ({ showForm: !s.showForm }))
+                    }
+                    disabled={!cuenta}
+                  >
+                    {showForm ? "Ocultar formulario" : "Crear meta"}
+                  </button>
+                </div>
+              </div>
+
+              {showForm && (
+                <div
+                  style={{
+                    marginBottom: 12,
+                    padding: 12,
+                    background: "#f8fafc",
+                    borderRadius: 8,
+                    border: "1px solid #e5e7eb",
+                  }}
+                >
+                  <h4 style={{ margin: "0 0 12px 0" }}>Nueva meta</h4>
+                  <form
+                    onSubmit={this.createObjetivo}
+                    style={{ display: "grid", gap: 10 }}
+                  >
+                    <label>
+                      <div
+                        style={{
+                          fontWeight: 600,
+                          marginBottom: 4,
+                          fontSize: 14,
+                        }}
+                      >
+                        Fecha objetivo
+                      </div>
+                      <input
+                        type="date"
+                        className="form-input"
+                        value={form.fecha_objetivo}
+                        onChange={(e) =>
+                          this.setState({
+                            form: { ...form, fecha_objetivo: e.target.value },
+                          })
+                        }
+                      />
+                    </label>
+                    <label>
+                      <div
+                        style={{
+                          fontWeight: 600,
+                          marginBottom: 4,
+                          fontSize: 14,
+                        }}
+                      >
+                        Monto objetivo
+                      </div>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="form-input"
+                        value={form.monto_objetivo}
+                        onChange={(e) =>
+                          this.setState({
+                            form: { ...form, monto_objetivo: e.target.value },
+                          })
+                        }
+                        placeholder="1000.00"
+                      />
+                    </label>
+                    <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                      <button
+                        className="btn btn-primary"
+                        type="submit"
+                        disabled={creating || !cuenta}
+                      >
+                        {creating ? (
+                          <>
+                            <Spinner /> Creando...
+                          </>
+                        ) : (
+                          "Crear meta"
+                        )}
+                      </button>
+                      <button
+                        className="btn"
+                        type="button"
+                        onClick={() =>
+                          this.setState({
+                            form: {
+                              fecha_objetivo: "",
+                              monto_objetivo: "",
+                            },
+                          })
+                        }
+                      >
+                        Limpiar
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              <div style={{ marginTop: 12 }}>
+                <h4 style={{ margin: "0 0 12px 0", fontSize: 15 }}>
+                  Mis metas
+                </h4>
+                {loadingList ? (
+                  <p>
+                    <Spinner /> Cargando...
+                  </p>
+                ) : objetivos.length === 0 ? (
+                  <p style={{ marginTop: 8, color: "#6b7280" }}>
+                    No tienes metas creadas todavía.
+                  </p>
+                ) : (
+                  objetivos.map((o) => {
+                    const isActive = o.estado === "en_progreso";
+                    const isCompleted = o.estado === "terminada";
+                    const isPaused = o.estado === "en_pausa";
+
+                    return (
+                      <div
+                        key={o.id_objetivo}
+                        style={styles.smallCard(isActive)}
+                      >
+                        {isActive && (
+                          <div
+                            style={{
+                              position: "absolute",
+                              top: -8,
+                              left: 12,
+                              background:
+                                "linear-gradient(135deg, #6366f1, #8b5cf6)",
+                              color: "white",
+                              padding: "2px 10px",
+                              borderRadius: 12,
+                              fontSize: 11,
+                              fontWeight: 700,
+                              boxShadow: "0 2px 8px rgba(99,102,241,0.3)",
+                            }}
+                          >
+                            ⚡ ACTIVA
+                          </div>
+                        )}
+                        <div style={{ width: 60, flexShrink: 0 }}>
+                          <Doughnut
+                            data={this.chartData(
+                              o.monto_objetivo,
+                              o.progreso || 0
+                            )}
+                            options={{
+                              cutout: "70%",
+                              plugins: { legend: { display: false } },
+                            }}
+                          />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              marginBottom: 6,
+                            }}
+                          >
+                            <div style={{ fontWeight: 700, fontSize: 15 }}>
+                              Meta #{o.numero_objetivo}
+                            </div>
+                            <span
+                              className={`badge ${
+                                isCompleted
+                                  ? "badge-completed"
+                                  : isActive
+                                  ? "badge-active"
+                                  : "badge-paused"
+                              }`}
+                            >
+                              {isCompleted
+                                ? "Completada"
+                                : isActive
+                                ? "En progreso"
+                                : "En pausa"}
+                            </span>
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 13,
+                              color: "#6b7280",
+                              marginBottom: 6,
+                            }}
+                          >
+                            Objetivo:{" "}
+                            <strong>{this.currency(o.monto_objetivo)}</strong>
+                            {" · "}
+                            {o.fecha_objetivo}
+                          </div>
+                          <div style={{ marginBottom: 6 }}>
+                            <div style={styles.progressOuter}>
+                              <div
+                                style={styles.progressInner(o.porcentaje || 0)}
+                              />
+                            </div>
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 12,
+                              color: "#6b7280",
+                            }}
+                          >
+                            {isCompleted ? (
+                              <span
+                                style={{ color: "#065f46", fontWeight: 600 }}
+                              >
+                                ✓ Meta completada
+                              </span>
+                            ) : (
+                              <>
+                                {this.currency(o.progreso || 0)} ·{" "}
+                                {this.percent(o.porcentaje || 0)}
+                                {isPaused && (
+                                  <span
+                                    style={{ color: "#92400e", marginLeft: 8 }}
+                                  >
+                                    (pausada)
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 6,
+                          }}
+                        >
+                          <button
+                            className="btn"
+                            onClick={() =>
+                              this.setState({ selectedId: o.id_objetivo })
+                            }
+                            style={{ fontSize: 13, padding: "6px 10px" }}
+                          >
+                            Ver
+                          </button>
+                          {!isCompleted && !isActive && (
+                            <button
+                              className="btn btn-success"
+                              onClick={() =>
+                                this.updateEstadoMeta(
+                                  o.id_objetivo,
+                                  "en_progreso"
+                                )
+                              }
+                              style={{ fontSize: 12, padding: "6px 10px" }}
+                            >
+                              Activar
+                            </button>
+                          )}
+                          {isActive && (
+                            <button
+                              className="btn btn-warning"
+                              onClick={() =>
+                                this.updateEstadoMeta(o.id_objetivo, "en_pausa")
+                              }
+                              style={{ fontSize: 12, padding: "6px 10px" }}
+                            >
+                              Pausar
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Panel derecho - Detalle */}
+          <div style={styles.right}>
+            <div style={styles.card}>
+              <h3 style={{ margin: "0 0 16px 0" }}>Detalle & progreso</h3>
+              {loading ? (
+                <p>
+                  <Spinner /> Cargando detalle...
+                </p>
+              ) : !detalle ? (
+                <p style={{ color: "#6b7280" }}>
+                  Selecciona una meta para ver su progreso.
+                </p>
+              ) : (
+                <div>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 20,
+                      alignItems: "center",
+                      marginBottom: 20,
+                    }}
+                  >
+                    <div style={{ width: 140, flexShrink: 0 }}>
+                      <Doughnut
+                        data={this.chartData(
+                          detalle.monto_objetivo,
+                          detalle.progreso
+                        )}
+                        options={{
+                          cutout: "70%",
+                          plugins: {
+                            legend: {
+                              position: "bottom",
+                              labels: { font: { size: 11 } },
+                            },
+                          },
+                        }}
+                      />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <h4 style={{ margin: "0 0 8px 0" }}>
+                        Meta #{detalle.numero_objetivo}
+                      </h4>
+                      <div
+                        style={{
+                          fontSize: 14,
+                          color: "#6b7280",
+                          marginBottom: 4,
+                        }}
+                      >
+                        <strong>Cuenta:</strong> {detalle.correo_cuenta}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 14,
+                          color: "#6b7280",
+                          marginBottom: 4,
+                        }}
+                      >
+                        <strong>Fecha objetivo:</strong>{" "}
+                        {detalle.fecha_objetivo}
+                      </div>
+                      <div style={{ fontSize: 14, color: "#6b7280" }}>
+                        <strong>Estado:</strong>{" "}
+                        <span
+                          className={`badge ${
+                            detalle.estado === "terminada"
+                              ? "badge-completed"
+                              : detalle.estado === "en_progreso"
+                              ? "badge-active"
+                              : "badge-paused"
+                          }`}
+                        >
+                          {detalle.estado === "terminada"
+                            ? "Completada"
+                            : detalle.estado === "en_progreso"
+                            ? "En progreso"
+                            : "En pausa"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 12,
+                      marginBottom: 20,
+                    }}
+                  >
+                    <div
+                      style={{
+                        padding: 12,
+                        background: "#f8fafc",
+                        borderRadius: 8,
+                        border: "1px solid #e5e7eb",
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: "#6b7280",
+                          marginBottom: 4,
+                        }}
+                      >
+                        Objetivo
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 20,
+                          fontWeight: 700,
+                          color: "#111827",
+                        }}
+                      >
+                        {this.currency(detalle.monto_objetivo)}
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        padding: 12,
+                        background:
+                          detalle.estado === "en_progreso"
+                            ? "#f0f9ff"
+                            : "#f8fafc",
+                        borderRadius: 8,
+                        border:
+                          detalle.estado === "en_progreso"
+                            ? "1px solid #bae6fd"
+                            : "1px solid #e5e7eb",
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: "#6b7280",
+                          marginBottom: 4,
+                        }}
+                      >
+                        Progreso actual
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 20,
+                          fontWeight: 700,
+                          color:
+                            detalle.estado === "en_progreso"
+                              ? "#0369a1"
+                              : "#111827",
+                        }}
+                      >
+                        {this.currency(detalle.progreso)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: 20 }}>
+                    <div
+                      style={{
+                        fontSize: 13,
+                        color: "#6b7280",
+                        marginBottom: 8,
+                      }}
+                    >
+                      Porcentaje completado
+                    </div>
+                    <div style={styles.progressOuter}>
+                      <div style={styles.progressInner(detalle.porcentaje)} />
+                    </div>
+                    <div
+                      style={{
+                        textAlign: "center",
+                        marginTop: 8,
+                        fontSize: 24,
+                        fontWeight: 700,
+                        color:
+                          detalle.porcentaje >= 100 ? "#059669" : "#6366f1",
+                      }}
+                    >
+                      {this.percent(detalle.porcentaje)}
+                    </div>
+                  </div>
+
+                  {detalle.estado === "terminada" && (
+                    <div
+                      style={{
+                        padding: 12,
+                        background: "#d1fae5",
+                        borderRadius: 8,
+                        color: "#065f46",
+                        textAlign: "center",
+                        fontWeight: 600,
+                        marginBottom: 16,
+                      }}
+                    >
+                      🎉 ¡Meta completada exitosamente!
+                    </div>
+                  )}
+
+                  {detalle.estado === "en_pausa" && (
+                    <div
+                      style={{
+                        padding: 12,
+                        background: "#fef3c7",
+                        borderRadius: 8,
+                        color: "#92400e",
+                        fontSize: 14,
+                        marginBottom: 16,
+                      }}
+                    >
+                      ⏸️ Meta en pausa. Actívala para continuar progresando.
+                    </div>
+                  )}
+
+                  {detalle.estado === "en_progreso" && (
+                    <div
+                      style={{
+                        padding: 12,
+                        background: "#dbeafe",
+                        borderRadius: 8,
+                        color: "#1e40af",
+                        fontSize: 14,
+                        marginBottom: 16,
+                      }}
+                    >
+                      ⚡ Esta meta está activa y recibiendo progreso de tu
+                      balance.
+                    </div>
+                  )}
+
+                  {/* Acciones */}
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    {detalle.estado === "en_progreso" && (
+                      <button
+                        className="btn btn-warning"
+                        onClick={() =>
+                          this.updateEstadoMeta(detalle.id_objetivo, "en_pausa")
+                        }
+                        disabled={loading}
+                        style={{ flex: 1 }}
+                      >
+                        Pausar meta
+                      </button>
+                    )}
+                    {detalle.estado === "en_pausa" && (
+                      <button
+                        className="btn btn-success"
+                        onClick={() =>
+                          this.updateEstadoMeta(
+                            detalle.id_objetivo,
+                            "en_progreso"
+                          )
+                        }
+                        disabled={loading}
+                        style={{ flex: 1 }}
+                      >
+                        Activar meta
+                      </button>
+                    )}
+                    {detalle.estado === "en_progreso" &&
+                      detalle.porcentaje >= 100 && (
+                        <button
+                          className="btn btn-primary"
+                          onClick={() =>
+                            this.updateEstadoMeta(
+                              detalle.id_objetivo,
+                              "terminada"
+                            )
+                          }
+                          disabled={loading}
+                          style={{ flex: 1 }}
+                        >
+                          ✓ Marcar como completada
+                        </button>
+                      )}
+                  </div>
+
+                  {detalle.estado === "en_progreso" &&
+                    detalle.porcentaje < 100 && (
+                      <div
+                        style={{
+                          marginTop: 16,
+                          padding: 10,
+                          background: "#f8fafc",
+                          borderRadius: 6,
+                          fontSize: 13,
+                          color: "#6b7280",
+                        }}
+                      >
+                        💡 Sigue agregando ingresos en Daily Input para alcanzar
+                        tu meta. Te faltan{" "}
+                        {this.currency(
+                          detalle.monto_objetivo - detalle.progreso
+                        )}
+                      </div>
+                    )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
 }
