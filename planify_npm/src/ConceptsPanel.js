@@ -302,9 +302,16 @@ export default function ConceptsPanel({
 
   // Mk-013 Concepts - Estilos y componentes de la interfaz
   const styles = {
-    container: { display: "flex", gap: 20, flexWrap: "wrap", padding: 12 },
+    container: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 20,
+      padding: 12,
+    },
+    topRow: { display: "flex", gap: 20, flexWrap: "wrap" },
     left: { flex: "1 1 360px", minWidth: 320 },
     right: { flex: "1 1 420px", minWidth: 320 },
+    bottomRow: { width: "100%" },
     card: {
       padding: 16,
       borderRadius: 10,
@@ -319,7 +326,6 @@ export default function ConceptsPanel({
       display: "flex",
       alignItems: "center",
       gap: 12,
-      marginBottom: 8,
       cursor: "pointer",
       border: "2px solid transparent",
       transition: "all 0.2s",
@@ -372,237 +378,369 @@ export default function ConceptsPanel({
     <>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       <div style={styles.container}>
-        <div style={styles.left}>
-          <div style={styles.card}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 16,
-              }}
-            >
-              <div>
-                <h3 style={{ margin: 0 }}>Conceptos</h3>
-                <p style={{ margin: 0, color: "#6b7280", fontSize: 14 }}>
-                  Gestiona tus conceptos de ingreso y egreso
-                </p>
-              </div>
-              <button
-                style={{
-                  ...styles.btn,
-                  background: "#f3f4f6",
-                  color: "#374151",
-                }}
-                onClick={() => {
-                  fetchCuenta(); // FP-01
-                  fetchConceptos(); // FP-02
-                }}
-              >
-                {loadingList ? <Spinner /> : "Refrescar"}
-              </button>
-            </div>
-            {/* Mk-014-E Concept Already Exists - Mensajes de error */}
-            {message && (
-              <div style={{ color: "#b91c1c", marginBottom: 12, fontSize: 14 }}>
-                {message}
-              </div>
-            )}
-            {/* Mk-014 Concept Created - Mensajes de éxito */}
-            {successMessage && (
-              <div style={{ color: "#065f46", marginBottom: 12, fontSize: 14 }}>
-                {successMessage}
-              </div>
-            )}
-
-            {/* Sección de cuenta */}
-            <div style={{ marginBottom: 16 }}>
-              <label
-                style={{ fontWeight: 600, display: "block", marginBottom: 8 }}
-              >
-                Cuenta
-              </label>
+        {/* Fila superior: Cuenta/Botones y Detalle */}
+        <div style={styles.topRow}>
+          {/* Panel izquierdo: Cuenta y botones */}
+          <div style={styles.left}>
+            <div style={styles.card}>
               <div
                 style={{
-                  padding: 10,
-                  borderRadius: 8,
-                  background: "#f8fafc",
-                  color: "#111827",
-                  fontSize: 14,
-                }}
-              >
-                {cuenta
-                  ? cuenta.nombre_cuenta || cuenta.correo_cuenta
-                  : "No hay cuenta disponible"}
-              </div>
-            </div>
-
-            {/* Mk-013 Concepts - Botones New y Edit */}
-            {!showForm && (
-              <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-                <button
-                  style={{ ...styles.btn, ...styles.btnPrimary }}
-                  onClick={handleNew} // FP-06
-                  disabled={!cuenta}
-                >
-                  New
-                </button>
-                <button
-                  style={{ ...styles.btn, ...styles.btnSecondary }}
-                  onClick={handleEdit} // FP-05
-                  disabled={!selectedId}
-                >
-                  Edit
-                </button>
-              </div>
-            )}
-
-            {/* Mk-013 Concepts - Formulario de concepto */}
-            {showForm && (
-              <div
-                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
                   marginBottom: 16,
-                  padding: 16,
-                  background: "#f8fafc",
-                  borderRadius: 8,
                 }}
               >
-                <h4 style={{ margin: "0 0 12px 0" }}>
-                  {isEditing ? "Editar concepto" : "Nuevo concepto"}
-                </h4>
-                <div style={{ display: "grid", gap: 12 }}>
-                  <label>
-                    <div style={{ fontWeight: 600, marginBottom: 6 }}>
-                      Concept:
-                    </div>
-                    <input
-                      type="text"
-                      style={{
-                        width: "100%",
-                        padding: 8,
-                        borderRadius: 6,
-                        border: "1px solid #e5e7eb",
-                      }}
-                      value={form.nombre_concepto}
-                      onChange={(e) =>
-                        setForm({ ...form, nombre_concepto: e.target.value })
-                      }
-                      placeholder="Nombre del concepto"
-                    />
-                  </label>
+                <div>
+                  <h3 style={{ margin: 0 }}>Conceptos</h3>
+                  <p style={{ margin: 0, color: "#6b7280", fontSize: 14 }}>
+                    Gestiona tus conceptos de ingreso y egreso
+                  </p>
+                </div>
+                <button
+                  style={{
+                    ...styles.btn,
+                    background: "#f3f4f6",
+                    color: "#374151",
+                  }}
+                  onClick={() => {
+                    fetchCuenta(); // FP-01
+                    fetchConceptos(); // FP-02
+                  }}
+                >
+                  {loadingList ? <Spinner /> : "Refrescar"}
+                </button>
+              </div>
+              {/* Mk-014-E Concept Already Exists - Mensajes de error */}
+              {message && (
+                <div
+                  style={{ color: "#b91c1c", marginBottom: 12, fontSize: 14 }}
+                >
+                  {message}
+                </div>
+              )}
+              {/* Mk-014 Concept Created - Mensajes de éxito */}
+              {successMessage && (
+                <div
+                  style={{ color: "#065f46", marginBottom: 12, fontSize: 14 }}
+                >
+                  {successMessage}
+                </div>
+              )}
 
-                  {/* Selector: Tipo (Income, Expense) */}
-                  <div>
-                    <div style={{ fontWeight: 600, marginBottom: 6 }}>
-                      Type:
-                    </div>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <label
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 6,
-                          cursor: "pointer",
-                        }}
-                      >
-                        <input
-                          type="radio"
-                          checked={form.tipo === true}
-                          onChange={() => setForm({ ...form, tipo: true })}
-                        />
-                        Income
-                      </label>
-                      <label
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 6,
-                          cursor: "pointer",
-                        }}
-                      >
-                        <input
-                          type="radio"
-                          checked={form.tipo === false}
-                          onChange={() => setForm({ ...form, tipo: false })}
-                        />
-                        Expense
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Selector: Period (Daily, Weekly, Biweekly, Monthly) */}
-                  <div>
-                    <div style={{ fontWeight: 600, marginBottom: 6 }}>
-                      Period:
-                    </div>
-                    <select
-                      style={{
-                        width: "100%",
-                        padding: 8,
-                        borderRadius: 6,
-                        border: "1px solid #e5e7eb",
-                      }}
-                      value={form.periodo}
-                      onChange={(e) =>
-                        setForm({ ...form, periodo: e.target.value })
-                      }
-                    >
-                      <option value="Daily">Daily</option>
-                      <option value="Weekly">Weekly</option>
-                      <option value="Biweekly">Biweekly</option>
-                      <option value="Monthly">Monthly</option>
-                    </select>
-                  </div>
-
-                  {/* Botones de acción */}
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button
-                      type="button"
-                      style={{ ...styles.btn, ...styles.btnPrimary }}
-                      disabled={saving || !cuenta}
-                      onClick={isEditing ? updateConcepto : createConcepto} // FP-04 o FP-03
-                    >
-                      {saving ? (
-                        <>
-                          <Spinner /> Guardando...
-                        </>
-                      ) : isEditing ? (
-                        "Actualizar"
-                      ) : (
-                        "Crear"
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      style={{
-                        ...styles.btn,
-                        background: "#f3f4f6",
-                        color: "#374151",
-                      }}
-                      onClick={() => {
-                        setShowForm(false);
-                        setIsEditing(false);
-                      }}
-                    >
-                      Cancelar
-                    </button>
-                  </div>
+              {/* Sección de cuenta */}
+              <div style={{ marginBottom: 16 }}>
+                <label
+                  style={{ fontWeight: 600, display: "block", marginBottom: 8 }}
+                >
+                  Cuenta
+                </label>
+                <div
+                  style={{
+                    padding: 10,
+                    borderRadius: 8,
+                    background: "#f8fafc",
+                    color: "#111827",
+                    fontSize: 14,
+                  }}
+                >
+                  {cuenta
+                    ? cuenta.nombre_cuenta || cuenta.correo_cuenta
+                    : "No hay cuenta disponible"}
                 </div>
               </div>
-            )}
 
-            {/* Mk-013 Configuration - Lista de conceptos existentes */}
-            <div>
-              {loadingList ? (
-                <p>
-                  <Spinner /> Cargando...
-                </p>
-              ) : conceptos.length === 0 ? (
-                <p style={{ marginTop: 8, color: "#6b7280" }}>
-                  No tienes conceptos creados todavía.
+              {/* Mk-013 Concepts - Botones New y Edit */}
+              {!showForm && (
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    style={{ ...styles.btn, ...styles.btnPrimary }}
+                    onClick={handleNew} // FP-06
+                    disabled={!cuenta}
+                  >
+                    New
+                  </button>
+                  <button
+                    style={{ ...styles.btn, ...styles.btnSecondary }}
+                    onClick={handleEdit} // FP-05
+                    disabled={!selectedId}
+                  >
+                    Edit
+                  </button>
+                </div>
+              )}
+
+              {/* Mk-013 Concepts - Formulario de concepto */}
+              {showForm && (
+                <div
+                  style={{
+                    padding: 16,
+                    background: "#f8fafc",
+                    borderRadius: 8,
+                  }}
+                >
+                  <h4 style={{ margin: "0 0 12px 0" }}>
+                    {isEditing ? "Editar concepto" : "Nuevo concepto"}
+                  </h4>
+                  <div style={{ display: "grid", gap: 12 }}>
+                    <label>
+                      <div style={{ fontWeight: 600, marginBottom: 6 }}>
+                        Concept:
+                      </div>
+                      <input
+                        type="text"
+                        style={{
+                          width: "100%",
+                          padding: 8,
+                          borderRadius: 6,
+                          border: "1px solid #e5e7eb",
+                        }}
+                        value={form.nombre_concepto}
+                        onChange={(e) =>
+                          setForm({ ...form, nombre_concepto: e.target.value })
+                        }
+                        placeholder="Nombre del concepto"
+                      />
+                    </label>
+
+                    {/* Selector: Tipo (Income, Expense) */}
+                    <div>
+                      <div style={{ fontWeight: 600, marginBottom: 6 }}>
+                        Type:
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <label
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                            cursor: "pointer",
+                          }}
+                        >
+                          <input
+                            type="radio"
+                            checked={form.tipo === true}
+                            onChange={() => setForm({ ...form, tipo: true })}
+                          />
+                          Income
+                        </label>
+                        <label
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                            cursor: "pointer",
+                          }}
+                        >
+                          <input
+                            type="radio"
+                            checked={form.tipo === false}
+                            onChange={() => setForm({ ...form, tipo: false })}
+                          />
+                          Expense
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Selector: Period (Daily, Weekly, Biweekly, Monthly) */}
+                    <div>
+                      <div style={{ fontWeight: 600, marginBottom: 6 }}>
+                        Period:
+                      </div>
+                      <select
+                        style={{
+                          width: "100%",
+                          padding: 8,
+                          borderRadius: 6,
+                          border: "1px solid #e5e7eb",
+                        }}
+                        value={form.periodo}
+                        onChange={(e) =>
+                          setForm({ ...form, periodo: e.target.value })
+                        }
+                      >
+                        <option value="Daily">Daily</option>
+                        <option value="Weekly">Weekly</option>
+                        <option value="Biweekly">Biweekly</option>
+                        <option value="Monthly">Monthly</option>
+                      </select>
+                    </div>
+
+                    {/* Botones de acción */}
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        type="button"
+                        style={{ ...styles.btn, ...styles.btnPrimary }}
+                        disabled={saving || !cuenta}
+                        onClick={isEditing ? updateConcepto : createConcepto} // FP-04 o FP-03
+                      >
+                        {saving ? (
+                          <>
+                            <Spinner /> Guardando...
+                          </>
+                        ) : isEditing ? (
+                          "Actualizar"
+                        ) : (
+                          "Crear"
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        style={{
+                          ...styles.btn,
+                          background: "#f3f4f6",
+                          color: "#374151",
+                        }}
+                        onClick={() => {
+                          setShowForm(false);
+                          setIsEditing(false);
+                        }}
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Panel derecho: Detalle del concepto */}
+          <div style={styles.right}>
+            <div style={styles.card}>
+              <h3 style={{ margin: 0, marginBottom: 16 }}>
+                Detalle del concepto
+              </h3>
+              {!selectedId ? (
+                <p style={{ color: "#6b7280" }}>
+                  Selecciona un concepto para ver sus detalles.
                 </p>
               ) : (
-                conceptos.map((c) => (
+                (() => {
+                  const selected = conceptos.find(
+                    (c) => c.id_concepto === selectedId
+                  );
+                  if (!selected)
+                    return (
+                      <p style={{ color: "#6b7280" }}>
+                        Concepto no encontrado.
+                      </p>
+                    );
+                  return (
+                    <div style={{ display: "grid", gap: 16 }}>
+                      <div style={{ display: "none" }}>
+                        <div
+                          style={{
+                            fontSize: 13,
+                            color: "#6b7280",
+                            marginBottom: 4,
+                          }}
+                        >
+                          ID Concepto
+                        </div>
+                        <div style={{ fontSize: 18, fontWeight: 700 }}>
+                          #{selected.id_concepto}
+                        </div>
+                      </div>
+                      <div>
+                        <div
+                          style={{
+                            fontSize: 13,
+                            color: "#6b7280",
+                            marginBottom: 4,
+                          }}
+                        >
+                          Nombre
+                        </div>
+                        <div style={{ fontSize: 16, fontWeight: 600 }}>
+                          {selected.nombre_concepto}
+                        </div>
+                      </div>
+                      <div>
+                        <div
+                          style={{
+                            fontSize: 13,
+                            color: "#6b7280",
+                            marginBottom: 4,
+                          }}
+                        >
+                          Tipo
+                        </div>
+                        <span
+                          style={{
+                            ...styles.badge,
+                            ...(selected.tipo
+                              ? styles.badgeIncome
+                              : styles.badgeExpense),
+                          }}
+                        >
+                          {selected.tipo ? "Income" : "Expense"}
+                        </span>
+                      </div>
+                      <div>
+                        <div
+                          style={{
+                            fontSize: 13,
+                            color: "#6b7280",
+                            marginBottom: 4,
+                          }}
+                        >
+                          Periodo
+                        </div>
+                        <span style={styles.periodBadge}>
+                          {selected.periodo}
+                        </span>
+                      </div>
+
+                      <div>
+                        <div
+                          style={{
+                            fontSize: 13,
+                            color: "#6b7280",
+                            marginBottom: 4,
+                          }}
+                        >
+                          Cuenta asociada
+                        </div>
+                        <div style={{ fontSize: 14 }}>
+                          {selected.correo_cuenta}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Fila inferior: Lista de conceptos en grid */}
+        <div style={styles.bottomRow}>
+          <div style={styles.card}>
+            <h3 style={{ margin: 0, marginBottom: 16 }}>Lista de Conceptos</h3>
+            {loadingList ? (
+              <p>
+                <Spinner /> Cargando...
+              </p>
+            ) : conceptos.length === 0 ? (
+              <p
+                style={{
+                  color: "#6b7280",
+                  textAlign: "center",
+                  padding: "20px 0",
+                }}
+              >
+                No tienes conceptos creados todavía.
+              </p>
+            ) : (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+                  gap: 12,
+                }}
+              >
+                {conceptos.map((c) => (
                   <div
                     key={c.id_concepto}
                     style={{
@@ -610,170 +748,36 @@ export default function ConceptsPanel({
                       ...(selectedId === c.id_concepto
                         ? styles.conceptCardSelected
                         : {}),
+                      flexDirection: "column",
+                      alignItems: "flex-start",
                     }}
                     onClick={() => setSelectedId(c.id_concepto)}
                   >
-                    <div style={{ flex: 1 }}>
-                      <div
-                        style={{
-                          fontWeight: 700,
-                          marginBottom: 6,
-                          fontSize: 15,
-                        }}
-                      >
-                        {c.nombre_concepto}
-                      </div>
-                      <div
-                        style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
-                      >
-                        <span
-                          style={{
-                            ...styles.badge,
-                            ...(c.tipo
-                              ? styles.badgeIncome
-                              : styles.badgeExpense),
-                          }}
-                        >
-                          {c.tipo ? "Income" : "Expense"}
-                        </span>
-                        <span style={styles.periodBadge}>{c.periodo}</span>
-                      </div>
-                    </div>
                     <div
                       style={{
-                        fontSize: 12,
-                        color: "#6b7280",
-                        display: "none",
+                        fontWeight: 700,
+                        marginBottom: 8,
+                        fontSize: 15,
                       }}
                     >
-                      ID: {c.id_concepto}
+                      {c.nombre_concepto}
                     </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Panel de detalles del concepto seleccionado */}
-        <div style={styles.right}>
-          <div style={styles.card}>
-            <h3 style={{ margin: 0, marginBottom: 16 }}>
-              Detalle del concepto
-            </h3>
-            {!selectedId ? (
-              <p style={{ color: "#6b7280" }}>
-                Selecciona un concepto para ver sus detalles.
-              </p>
-            ) : (
-              (() => {
-                const selected = conceptos.find(
-                  (c) => c.id_concepto === selectedId
-                );
-                if (!selected)
-                  return (
-                    <p style={{ color: "#6b7280" }}>Concepto no encontrado.</p>
-                  );
-                return (
-                  <div style={{ display: "grid", gap: 16 }}>
-                    <div style={{ display: "none" }}>
-                      <div
-                        style={{
-                          fontSize: 13,
-                          color: "#6b7280",
-                          marginBottom: 4,
-                        }}
-                      >
-                        ID Concepto
-                      </div>
-                      <div style={{ fontSize: 18, fontWeight: 700 }}>
-                        #{selected.id_concepto}
-                      </div>
-                    </div>
-                    <div>
-                      <div
-                        style={{
-                          fontSize: 13,
-                          color: "#6b7280",
-                          marginBottom: 4,
-                        }}
-                      >
-                        Nombre
-                      </div>
-                      <div style={{ fontSize: 16, fontWeight: 600 }}>
-                        {selected.nombre_concepto}
-                      </div>
-                    </div>
-                    <div>
-                      <div
-                        style={{
-                          fontSize: 13,
-                          color: "#6b7280",
-                          marginBottom: 4,
-                        }}
-                      >
-                        Tipo
-                      </div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       <span
                         style={{
                           ...styles.badge,
-                          ...(selected.tipo
+                          ...(c.tipo
                             ? styles.badgeIncome
                             : styles.badgeExpense),
                         }}
                       >
-                        {selected.tipo ? "Income" : "Expense"}
+                        {c.tipo ? "Income" : "Expense"}
                       </span>
-                    </div>
-                    <div>
-                      <div
-                        style={{
-                          fontSize: 13,
-                          color: "#6b7280",
-                          marginBottom: 4,
-                        }}
-                      >
-                        Periodo
-                      </div>
-                      <span style={styles.periodBadge}>{selected.periodo}</span>
-                    </div>
-                    <div>
-                      <div
-                        style={{
-                          fontSize: 13,
-                          color: "#6b7280",
-                          marginBottom: 4,
-                        }}
-                      >
-                        Estado
-                      </div>
-                      <span
-                        style={{
-                          ...styles.badge,
-                          background: selected.activo ? "#d1fae5" : "#fee2e2",
-                          color: selected.activo ? "#065f46" : "#991b1b",
-                        }}
-                      >
-                        {selected.activo ? "Activo" : "Inactivo"}
-                      </span>
-                    </div>
-                    <div>
-                      <div
-                        style={{
-                          fontSize: 13,
-                          color: "#6b7280",
-                          marginBottom: 4,
-                        }}
-                      >
-                        Cuenta asociada
-                      </div>
-                      <div style={{ fontSize: 14 }}>
-                        {selected.correo_cuenta}
-                      </div>
+                      <span style={styles.periodBadge}>{c.periodo}</span>
                     </div>
                   </div>
-                );
-              })()
+                ))}
+              </div>
             )}
           </div>
         </div>
