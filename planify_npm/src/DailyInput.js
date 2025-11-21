@@ -532,7 +532,7 @@ export default function DailyInput({
         }}
       >
         <div>
-          <h3 style={{ margin: 0 }}>Daily Input (MK-009)</h3>
+          <h3 style={{ margin: 0 }}>Daily Input</h3>
           <div style={styles.smallMuted}>
             Registrar ingresos y gastos por fecha
           </div>
