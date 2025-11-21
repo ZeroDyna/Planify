@@ -18,16 +18,21 @@ export default class ObjetivoPanel extends React.Component {
       successMessage: "",
       showForm: false,
       form: {
+        nombre: "",
         fecha_objetivo: "",
         monto_objetivo: "",
       },
       creating: false,
       balanceTotal: 0,
-      balanceAsignado: 0, // Balance ya asignado a metas completadas
+      balanceAsignado: 0,
+      editing: false,
+      editForm: {
+        nombre: "",
+        monto_objetivo: "",
+      },
     };
   }
 
-  // FP-28: Obtiene la cuenta asociada al usuario autenticado
   fetchCuenta = async () => {
     this.setState({ message: "" });
     const { SUPABASE_URL, accessToken, user } = this.props;
@@ -81,7 +86,6 @@ export default class ObjetivoPanel extends React.Component {
     }
   };
 
-  // FP-29: Obtiene todas las metas/objetivos ordenadas por numero_objetivo
   fetchObjetivos = async () => {
     const { SUPABASE_URL, accessToken } = this.props;
     const { cuenta } = this.state;
@@ -112,7 +116,6 @@ export default class ObjetivoPanel extends React.Component {
       }
       const data = await res.json();
 
-      // Calcular progreso para cada objetivo
       const objetivosConProgreso = this.calculateProgressForAll(data || []);
 
       this.setState({
@@ -132,27 +135,6 @@ export default class ObjetivoPanel extends React.Component {
     }
   };
 
-  // FP-30: Consulta el siguiente número de objetivo
-  fetchNextNumeroObjetivo = async (correo_cuenta) => {
-    const { SUPABASE_URL, accessToken } = this.props;
-    const url = `${SUPABASE_URL}/rest/v1/objetivo?correo_cuenta=eq.${encodeURIComponent(
-      correo_cuenta
-    )}&select=numero_objetivo&order=numero_objetivo.desc&limit=1`;
-    const headersBase = {
-      "Content-Type": "application/json",
-      apikey: this.props.SUPABASE_KEY,
-    };
-    const headersAuth = accessToken
-      ? { ...headersBase, Authorization: `Bearer ${accessToken}` }
-      : headersBase;
-    const res = await fetch(url, { headers: headersAuth });
-    if (!res.ok) return 1;
-    const data = await res.json();
-    if (!Array.isArray(data) || data.length === 0) return 1;
-    return (data[0].numero_objetivo || 0) + 1;
-  };
-
-  // FP-31: Crea una nueva meta (por defecto en "en_pausa" si hay otras activas)
   createObjetivo = async (e) => {
     e?.preventDefault();
     this.setState({ message: "", successMessage: "" });
@@ -164,10 +146,10 @@ export default class ObjetivoPanel extends React.Component {
       return;
     }
 
-    const { fecha_objetivo, monto_objetivo } = this.state.form;
+    const { nombre, fecha_objetivo, monto_objetivo } = this.state.form;
 
-    if (!fecha_objetivo || !monto_objetivo) {
-      this.setState({ message: "Completa fecha y monto." });
+    if (!nombre || !fecha_objetivo || !monto_objetivo) {
+      this.setState({ message: "Completa todos los campos." });
       return;
     }
 
@@ -179,20 +161,15 @@ export default class ObjetivoPanel extends React.Component {
 
     this.setState({ creating: true });
     try {
-      const numero_objetivo = await this.fetchNextNumeroObjetivo(
-        cuenta.correo_cuenta
-      );
-
-      // Si es la primera meta, se crea activa. Si no, en pausa
       const hayMetasActivas = objetivos.some((o) => o.estado === "en_progreso");
       const estadoInicial = hayMetasActivas ? "en_pausa" : "en_progreso";
 
       const body = {
         correo_cuenta: cuenta.correo_cuenta,
+        nombre: nombre.trim(),
         fecha_objetivo,
         monto_objetivo: montoNum,
         estado: estadoInicial,
-        numero_objetivo,
       };
 
       const res = await fetch(`${SUPABASE_URL}/rest/v1/objetivo`, {
@@ -219,12 +196,12 @@ export default class ObjetivoPanel extends React.Component {
       this.setState({
         selectedId:
           Array.isArray(data) && data.length ? data[0].id_objetivo : null,
-        successMessage: `Meta creada ${
+        successMessage: `Meta "${nombre}" creada ${
           estadoInicial === "en_progreso"
             ? "y activada"
             : "(en pausa - activa otra meta primero)"
         }`,
-        form: { fecha_objetivo: "", monto_objetivo: "" },
+        form: { nombre: "", fecha_objetivo: "", monto_objetivo: "" },
         showForm: false,
       });
     } catch (err) {
@@ -236,16 +213,80 @@ export default class ObjetivoPanel extends React.Component {
     }
   };
 
-  // FP-32: Calcula progreso secuencial meta por meta
+  updateObjetivo = async (e) => {
+    e?.preventDefault();
+    this.setState({ message: "", successMessage: "" });
+    const { SUPABASE_URL, accessToken } = this.props;
+    const { detalle, editForm } = this.state;
+
+    if (!detalle) {
+      this.setState({ message: "No hay meta seleccionada." });
+      return;
+    }
+
+    const { nombre, monto_objetivo } = editForm;
+
+    if (!nombre || !monto_objetivo) {
+      this.setState({ message: "Completa todos los campos." });
+      return;
+    }
+
+    const montoNum = Number(monto_objetivo);
+    if (montoNum <= 0) {
+      this.setState({ message: "El monto debe ser mayor a 0." });
+      return;
+    }
+
+    this.setState({ loading: true });
+    try {
+      const body = {
+        nombre: nombre.trim(),
+        monto_objetivo: montoNum,
+      };
+
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/objetivo?id_objetivo=eq.${detalle.id_objetivo}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: this.props.SUPABASE_KEY,
+            Authorization: accessToken ? `Bearer ${accessToken}` : "",
+          },
+          body: JSON.stringify(body),
+        }
+      );
+
+      if (!res.ok) {
+        this.setState({
+          message: "Error al actualizar la meta",
+          loading: false,
+        });
+        return;
+      }
+
+      await this.fetchObjetivos();
+      await this.fetchDetalle(detalle.id_objetivo);
+      this.setState({
+        successMessage: "Meta actualizada correctamente",
+        editing: false,
+      });
+      setTimeout(() => this.setState({ successMessage: "" }), 3000);
+    } catch (err) {
+      console.error("updateObjetivo error:", err);
+      this.setState({ message: "Error de conexión al actualizar meta" });
+    } finally {
+      this.setState({ loading: false });
+    }
+  };
+
   calculateProgressForAll = (objetivos) => {
     const { balanceTotal } = this.state;
-    let balanceRestante = balanceTotal;
     let balanceAsignadoTotal = 0;
 
-    return objetivos.map((obj, idx) => {
+    return objetivos.map((obj) => {
       const monto_objetivo = Number(obj.monto_objetivo) || 0;
 
-      // Solo las metas "terminadas" anteriores consumen balance
       if (obj.estado === "terminada") {
         balanceAsignadoTotal += monto_objetivo;
         return {
@@ -255,9 +296,7 @@ export default class ObjetivoPanel extends React.Component {
         };
       }
 
-      // Si la meta está "en_progreso", recibe el balance disponible
       if (obj.estado === "en_progreso") {
-        // Balance disponible = balance total - balance ya asignado a metas completadas
         const balanceDisponible = balanceTotal - balanceAsignadoTotal;
         const progreso = Math.min(balanceDisponible, monto_objetivo);
         const porcentaje =
@@ -270,7 +309,6 @@ export default class ObjetivoPanel extends React.Component {
         };
       }
 
-      // Si está "en_pausa", no tiene progreso
       return {
         ...obj,
         progreso: 0,
@@ -279,7 +317,6 @@ export default class ObjetivoPanel extends React.Component {
     });
   };
 
-  // FP-33: Obtiene el detalle de una meta específica
   fetchDetalle = async (id) => {
     if (!id) {
       this.setState({ detalle: null });
@@ -317,14 +354,20 @@ export default class ObjetivoPanel extends React.Component {
         return;
       }
 
-      // Recalcular progreso con datos actuales
       const objetivosActualizados = this.calculateProgressForAll(
         this.state.objetivos
       );
       const detalleActualizado =
         objetivosActualizados.find((o) => o.id_objetivo === id) || data[0];
 
-      this.setState({ detalle: detalleActualizado });
+      this.setState({
+        detalle: detalleActualizado,
+        editForm: {
+          nombre: detalleActualizado.nombre || "",
+          monto_objetivo: detalleActualizado.monto_objetivo || "",
+        },
+        editing: false,
+      });
     } catch (err) {
       console.error("fetchDetalle error:", err);
       this.setState({
@@ -336,14 +379,12 @@ export default class ObjetivoPanel extends React.Component {
     }
   };
 
-  // FP-34: Cambia el estado de una meta y gestiona la lógica de activación/completado
   updateEstadoMeta = async (id, nuevoEstado) => {
-    const { objetivos, detalle } = this.state;
+    const { objetivos } = this.state;
     const metaActual = objetivos.find((o) => o.id_objetivo === id);
 
     if (!metaActual) return;
 
-    // Validación: no permitir marcar como terminada si no está completa
     if (
       nuevoEstado === "terminada" &&
       metaActual.progreso < metaActual.monto_objetivo
@@ -360,10 +401,7 @@ export default class ObjetivoPanel extends React.Component {
     const { SUPABASE_URL, accessToken } = this.props;
 
     try {
-      // Si se está pausando una meta activa, no hacer nada más
-      // Si se está activando una meta, pausar todas las demás primero
       if (nuevoEstado === "en_progreso") {
-        // Pausar todas las metas activas primero
         const metasActivas = objetivos.filter(
           (o) => o.estado === "en_progreso" && o.id_objetivo !== id
         );
@@ -384,7 +422,6 @@ export default class ObjetivoPanel extends React.Component {
         }
       }
 
-      // Actualizar la meta seleccionada
       const res = await fetch(
         `${SUPABASE_URL}/rest/v1/objetivo?id_objetivo=eq.${id}`,
         {
@@ -406,11 +443,10 @@ export default class ObjetivoPanel extends React.Component {
         return;
       }
 
-      // Si se completó una meta, activar automáticamente la siguiente en pausa
       if (nuevoEstado === "terminada") {
         const siguienteMeta = objetivos
           .filter((o) => o.estado === "en_pausa")
-          .sort((a, b) => a.numero_objetivo - b.numero_objetivo)[0];
+          .sort((a, b) => a.id_objetivo - b.id_objetivo)[0];
 
         if (siguienteMeta) {
           await fetch(
@@ -426,7 +462,7 @@ export default class ObjetivoPanel extends React.Component {
             }
           );
           this.setState({
-            successMessage: `¡Meta completada! Meta #${siguienteMeta.numero_objetivo} ahora está activa.`,
+            successMessage: `¡Meta completada! "${siguienteMeta.nombre}" ahora está activa.`,
           });
         } else {
           this.setState({ successMessage: "¡Felicidades! Meta completada." });
@@ -449,7 +485,6 @@ export default class ObjetivoPanel extends React.Component {
     }
   };
 
-  // FP-35: Calcula el balance real de la cuenta desde movimientos
   fetchBalanceTotal = async () => {
     const { SUPABASE_URL, accessToken } = this.props;
     const { cuenta } = this.state;
@@ -665,6 +700,8 @@ export default class ObjetivoPanel extends React.Component {
       form,
       creating,
       balanceTotal,
+      editing,
+      editForm,
     } = this.state;
     const { Spinner, styles } = this;
 
@@ -673,59 +710,63 @@ export default class ObjetivoPanel extends React.Component {
     return (
       <>
         <style>{`
-                    @keyframes spin { to { transform: rotate(360deg); } }
-                    .btn {
-                        padding: 8px 12px;
-                        borderRadius: 8px;
-                        border: none;
-                        cursor: pointer;
-                        fontSize: 14px;
-                        fontWeight: 500;
-                        background: #f3f4f6;
-                        color: #374151;
-                        transition: all 0.2s;
-                    }
-                    .btn:hover { background: #e5e7eb; }
-                    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-                    .btn-primary {
-                        background: linear-gradient(135deg,#6366f1,#7c3aed);
-                        color: #fff;
-                    }
-                    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(99,102,241,0.3); }
-                    .btn-success {
-                        background: linear-gradient(135deg,#10b981,#059669);
-                        color: #fff;
-                    }
-                    .btn-warning {
-                        background: linear-gradient(135deg,#f59e0b,#d97706);
-                        color: #fff;
-                    }
-                    .form-input {
-                        width: 100%;
-                        padding: 8px;
-                        borderRadius: 6px;
-                        border: 1px solid #e5e7eb;
-                        marginTop: 4px;
-                    }
-                    .badge {
-                        padding: 4px 10px;
-                        borderRadius: 6px;
-                        fontSize: 12px;
-                        fontWeight: 600;
-                    }
-                    .badge-active {
-                        background: #dbeafe;
-                        color: #1e40af;
-                    }
-                    .badge-paused {
-                        background: #fef3c7;
-                        color: #92400e;
-                    }
-                    .badge-completed {
-                        background: #d1fae5;
-                        color: #065f46;
-                    }
-                `}</style>
+          @keyframes spin { to { transform: rotate(360deg); } }
+          .btn {
+            padding: 8px 12px;
+            borderRadius: 8px;
+            border: none;
+            cursor: pointer;
+            fontSize: 14px;
+            fontWeight: 500;
+            background: #f3f4f6;
+            color: #374151;
+            transition: all 0.2s;
+          }
+          .btn:hover { background: #e5e7eb; }
+          .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+          .btn-primary {
+            background: linear-gradient(135deg,#6366f1,#7c3aed);
+            color: #fff;
+          }
+          .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(99,102,241,0.3); }
+          .btn-success {
+            background: linear-gradient(135deg,#10b981,#059669);
+            color: #fff;
+          }
+          .btn-warning {
+            background: linear-gradient(135deg,#f59e0b,#d97706);
+            color: #fff;
+          }
+          .btn-edit {
+            background: linear-gradient(135deg,#06b6d4,#0891b2);
+            color: #fff;
+          }
+          .form-input {
+            width: 100%;
+            padding: 8px;
+            borderRadius: 6px;
+            border: 1px solid #e5e7eb;
+            marginTop: 4px;
+          }
+          .badge {
+            padding: 4px 10px;
+            borderRadius: 6px;
+            fontSize: 12px;
+            fontWeight: 600;
+          }
+          .badge-active {
+            background: #dbeafe;
+            color: #1e40af;
+          }
+          .badge-paused {
+            background: #fef3c7;
+            color: #92400e;
+          }
+          .badge-completed {
+            background: #d1fae5;
+            color: #065f46;
+          }
+        `}</style>
         <div style={styles.container}>
           <div style={styles.left}>
             <div style={styles.card}>
@@ -786,7 +827,6 @@ export default class ObjetivoPanel extends React.Component {
                 </div>
               )}
 
-              {/* Balance total */}
               <div
                 style={{
                   marginBottom: 12,
@@ -808,7 +848,7 @@ export default class ObjetivoPanel extends React.Component {
                 </div>
                 {metaActiva && (
                   <div style={{ fontSize: 12, color: "#0369a1", marginTop: 6 }}>
-                    📍 Progresando en Meta #{metaActiva.numero_objetivo}
+                    🎯 Progresando en: {metaActiva.nombre}
                   </div>
                 )}
               </div>
@@ -860,6 +900,28 @@ export default class ObjetivoPanel extends React.Component {
                     onSubmit={this.createObjetivo}
                     style={{ display: "grid", gap: 10 }}
                   >
+                    <label>
+                      <div
+                        style={{
+                          fontWeight: 600,
+                          marginBottom: 4,
+                          fontSize: 14,
+                        }}
+                      >
+                        Nombre de la meta
+                      </div>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={form.nombre}
+                        onChange={(e) =>
+                          this.setState({
+                            form: { ...form, nombre: e.target.value },
+                          })
+                        }
+                        placeholder="Ej: Vacaciones en Europa"
+                      />
+                    </label>
                     <label>
                       <div
                         style={{
@@ -924,6 +986,7 @@ export default class ObjetivoPanel extends React.Component {
                         onClick={() =>
                           this.setState({
                             form: {
+                              nombre: "",
                               fecha_objetivo: "",
                               monto_objetivo: "",
                             },
@@ -1001,7 +1064,7 @@ export default class ObjetivoPanel extends React.Component {
                             }}
                           >
                             <div style={{ fontWeight: 700, fontSize: 15 }}>
-                              Meta #{o.numero_objetivo}
+                              {o.nombre || `Meta #${o.id_objetivo}`}
                             </div>
                             <span
                               className={`badge ${
@@ -1129,288 +1192,391 @@ export default class ObjetivoPanel extends React.Component {
                 </p>
               ) : (
                 <div>
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 20,
-                      alignItems: "center",
-                      marginBottom: 20,
-                    }}
-                  >
-                    <div style={{ width: 140, flexShrink: 0 }}>
-                      <Doughnut
-                        data={this.chartData(
-                          detalle.monto_objetivo,
-                          detalle.progreso
-                        )}
-                        options={{
-                          cutout: "70%",
-                          plugins: {
-                            legend: {
-                              position: "bottom",
-                              labels: { font: { size: 11 } },
-                            },
-                          },
-                        }}
-                      />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <h4 style={{ margin: "0 0 8px 0" }}>
-                        Meta #{detalle.numero_objetivo}
-                      </h4>
-                      <div
-                        style={{
-                          fontSize: 14,
-                          color: "#6b7280",
-                          marginBottom: 4,
-                        }}
-                      >
-                        <strong>Cuenta:</strong> {detalle.correo_cuenta}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 14,
-                          color: "#6b7280",
-                          marginBottom: 4,
-                        }}
-                      >
-                        <strong>Fecha objetivo:</strong>{" "}
-                        {detalle.fecha_objetivo}
-                      </div>
-                      <div style={{ fontSize: 14, color: "#6b7280" }}>
-                        <strong>Estado:</strong>{" "}
-                        <span
-                          className={`badge ${
-                            detalle.estado === "terminada"
-                              ? "badge-completed"
-                              : detalle.estado === "en_progreso"
-                              ? "badge-active"
-                              : "badge-paused"
-                          }`}
-                        >
-                          {detalle.estado === "terminada"
-                            ? "Completada"
-                            : detalle.estado === "en_progreso"
-                            ? "En progreso"
-                            : "En pausa"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
-                      gap: 12,
-                      marginBottom: 20,
-                    }}
-                  >
+                  {editing ? (
                     <div
                       style={{
+                        marginBottom: 20,
                         padding: 12,
                         background: "#f8fafc",
                         borderRadius: 8,
                         border: "1px solid #e5e7eb",
                       }}
                     >
+                      <h4 style={{ margin: "0 0 12px 0" }}>Editar meta</h4>
+                      <form
+                        onSubmit={this.updateObjetivo}
+                        style={{ display: "grid", gap: 10 }}
+                      >
+                        <label>
+                          <div
+                            style={{
+                              fontWeight: 600,
+                              marginBottom: 4,
+                              fontSize: 14,
+                            }}
+                          >
+                            Nombre de la meta
+                          </div>
+                          <input
+                            type="text"
+                            className="form-input"
+                            value={editForm.nombre}
+                            onChange={(e) =>
+                              this.setState({
+                                editForm: {
+                                  ...editForm,
+                                  nombre: e.target.value,
+                                },
+                              })
+                            }
+                          />
+                        </label>
+                        <label>
+                          <div
+                            style={{
+                              fontWeight: 600,
+                              marginBottom: 4,
+                              fontSize: 14,
+                            }}
+                          >
+                            Monto objetivo
+                          </div>
+                          <input
+                            type="number"
+                            step="0.01"
+                            className="form-input"
+                            value={editForm.monto_objetivo}
+                            onChange={(e) =>
+                              this.setState({
+                                editForm: {
+                                  ...editForm,
+                                  monto_objetivo: e.target.value,
+                                },
+                              })
+                            }
+                          />
+                        </label>
+                        <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                          <button
+                            className="btn btn-primary"
+                            type="submit"
+                            disabled={loading}
+                          >
+                            Guardar cambios
+                          </button>
+                          <button
+                            className="btn"
+                            type="button"
+                            onClick={() => this.setState({ editing: false })}
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  ) : (
+                    <>
                       <div
                         style={{
-                          fontSize: 12,
-                          color: "#6b7280",
-                          marginBottom: 4,
+                          display: "flex",
+                          gap: 20,
+                          alignItems: "center",
+                          marginBottom: 20,
                         }}
                       >
-                        Objetivo
+                        <div style={{ width: 140, flexShrink: 0 }}>
+                          <Doughnut
+                            data={this.chartData(
+                              detalle.monto_objetivo,
+                              detalle.progreso
+                            )}
+                            options={{
+                              cutout: "70%",
+                              plugins: {
+                                legend: {
+                                  position: "bottom",
+                                  labels: { font: { size: 11 } },
+                                },
+                              },
+                            }}
+                          />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <h4 style={{ margin: "0 0 8px 0" }}>
+                            {detalle.nombre || `Meta #${detalle.id_objetivo}`}
+                          </h4>
+                          <div
+                            style={{
+                              fontSize: 14,
+                              color: "#6b7280",
+                              marginBottom: 4,
+                            }}
+                          >
+                            <strong>Cuenta:</strong> {detalle.correo_cuenta}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 14,
+                              color: "#6b7280",
+                              marginBottom: 4,
+                            }}
+                          >
+                            <strong>Fecha objetivo:</strong>{" "}
+                            {detalle.fecha_objetivo}
+                          </div>
+                          <div style={{ fontSize: 14, color: "#6b7280" }}>
+                            <strong>Estado:</strong>{" "}
+                            <span
+                              className={`badge ${
+                                detalle.estado === "terminada"
+                                  ? "badge-completed"
+                                  : detalle.estado === "en_progreso"
+                                  ? "badge-active"
+                                  : "badge-paused"
+                              }`}
+                            >
+                              {detalle.estado === "terminada"
+                                ? "Completada"
+                                : detalle.estado === "en_progreso"
+                                ? "En progreso"
+                                : "En pausa"}
+                            </span>
+                          </div>
+                        </div>
                       </div>
+
                       <div
                         style={{
-                          fontSize: 20,
-                          fontWeight: 700,
-                          color: "#111827",
+                          display: "grid",
+                          gridTemplateColumns: "1fr 1fr",
+                          gap: 12,
+                          marginBottom: 20,
                         }}
                       >
-                        {this.currency(detalle.monto_objetivo)}
-                      </div>
-                    </div>
-                    <div
-                      style={{
-                        padding: 12,
-                        background:
-                          detalle.estado === "en_progreso"
-                            ? "#f0f9ff"
-                            : "#f8fafc",
-                        borderRadius: 8,
-                        border:
-                          detalle.estado === "en_progreso"
-                            ? "1px solid #bae6fd"
-                            : "1px solid #e5e7eb",
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontSize: 12,
-                          color: "#6b7280",
-                          marginBottom: 4,
-                        }}
-                      >
-                        Progreso actual
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 20,
-                          fontWeight: 700,
-                          color:
-                            detalle.estado === "en_progreso"
-                              ? "#0369a1"
-                              : "#111827",
-                        }}
-                      >
-                        {this.currency(detalle.progreso)}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={{ marginBottom: 20 }}>
-                    <div
-                      style={{
-                        fontSize: 13,
-                        color: "#6b7280",
-                        marginBottom: 8,
-                      }}
-                    >
-                      Porcentaje completado
-                    </div>
-                    <div style={styles.progressOuter}>
-                      <div style={styles.progressInner(detalle.porcentaje)} />
-                    </div>
-                    <div
-                      style={{
-                        textAlign: "center",
-                        marginTop: 8,
-                        fontSize: 24,
-                        fontWeight: 700,
-                        color:
-                          detalle.porcentaje >= 100 ? "#059669" : "#6366f1",
-                      }}
-                    >
-                      {this.percent(detalle.porcentaje)}
-                    </div>
-                  </div>
-
-                  {detalle.estado === "terminada" && (
-                    <div
-                      style={{
-                        padding: 12,
-                        background: "#d1fae5",
-                        borderRadius: 8,
-                        color: "#065f46",
-                        textAlign: "center",
-                        fontWeight: 600,
-                        marginBottom: 16,
-                      }}
-                    >
-                      🎉 ¡Meta completada exitosamente!
-                    </div>
-                  )}
-
-                  {detalle.estado === "en_pausa" && (
-                    <div
-                      style={{
-                        padding: 12,
-                        background: "#fef3c7",
-                        borderRadius: 8,
-                        color: "#92400e",
-                        fontSize: 14,
-                        marginBottom: 16,
-                      }}
-                    >
-                      ⏸️ Meta en pausa. Actívala para continuar progresando.
-                    </div>
-                  )}
-
-                  {detalle.estado === "en_progreso" && (
-                    <div
-                      style={{
-                        padding: 12,
-                        background: "#dbeafe",
-                        borderRadius: 8,
-                        color: "#1e40af",
-                        fontSize: 14,
-                        marginBottom: 16,
-                      }}
-                    >
-                      ⚡ Esta meta está activa y recibiendo progreso de tu
-                      balance.
-                    </div>
-                  )}
-
-                  {/* Acciones */}
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    {detalle.estado === "en_progreso" && (
-                      <button
-                        className="btn btn-warning"
-                        onClick={() =>
-                          this.updateEstadoMeta(detalle.id_objetivo, "en_pausa")
-                        }
-                        disabled={loading}
-                        style={{ flex: 1 }}
-                      >
-                        Pausar meta
-                      </button>
-                    )}
-                    {detalle.estado === "en_pausa" && (
-                      <button
-                        className="btn btn-success"
-                        onClick={() =>
-                          this.updateEstadoMeta(
-                            detalle.id_objetivo,
-                            "en_progreso"
-                          )
-                        }
-                        disabled={loading}
-                        style={{ flex: 1 }}
-                      >
-                        Activar meta
-                      </button>
-                    )}
-                    {detalle.estado === "en_progreso" &&
-                      detalle.porcentaje >= 100 && (
-                        <button
-                          className="btn btn-primary"
-                          onClick={() =>
-                            this.updateEstadoMeta(
-                              detalle.id_objetivo,
-                              "terminada"
-                            )
-                          }
-                          disabled={loading}
-                          style={{ flex: 1 }}
+                        <div
+                          style={{
+                            padding: 12,
+                            background: "#f8fafc",
+                            borderRadius: 8,
+                            border: "1px solid #e5e7eb",
+                          }}
                         >
-                          ✓ Marcar como completada
-                        </button>
-                      )}
-                  </div>
-
-                  {detalle.estado === "en_progreso" &&
-                    detalle.porcentaje < 100 && (
-                      <div
-                        style={{
-                          marginTop: 16,
-                          padding: 10,
-                          background: "#f8fafc",
-                          borderRadius: 6,
-                          fontSize: 13,
-                          color: "#6b7280",
-                        }}
-                      >
-                        💡 Sigue agregando ingresos en Daily Input para alcanzar
-                        tu meta. Te faltan{" "}
-                        {this.currency(
-                          detalle.monto_objetivo - detalle.progreso
-                        )}
+                          <div
+                            style={{
+                              fontSize: 12,
+                              color: "#6b7280",
+                              marginBottom: 4,
+                            }}
+                          >
+                            Objetivo
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 20,
+                              fontWeight: 700,
+                              color: "#111827",
+                            }}
+                          >
+                            {this.currency(detalle.monto_objetivo)}
+                          </div>
+                        </div>
+                        <div
+                          style={{
+                            padding: 12,
+                            background:
+                              detalle.estado === "en_progreso"
+                                ? "#f0f9ff"
+                                : "#f8fafc",
+                            borderRadius: 8,
+                            border:
+                              detalle.estado === "en_progreso"
+                                ? "1px solid #bae6fd"
+                                : "1px solid #e5e7eb",
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontSize: 12,
+                              color: "#6b7280",
+                              marginBottom: 4,
+                            }}
+                          >
+                            Progreso actual
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 20,
+                              fontWeight: 700,
+                              color:
+                                detalle.estado === "en_progreso"
+                                  ? "#0369a1"
+                                  : "#111827",
+                            }}
+                          >
+                            {this.currency(detalle.progreso)}
+                          </div>
+                        </div>
                       </div>
-                    )}
+
+                      <div style={{ marginBottom: 20 }}>
+                        <div
+                          style={{
+                            fontSize: 13,
+                            color: "#6b7280",
+                            marginBottom: 8,
+                          }}
+                        >
+                          Porcentaje completado
+                        </div>
+                        <div style={styles.progressOuter}>
+                          <div
+                            style={styles.progressInner(detalle.porcentaje)}
+                          />
+                        </div>
+                        <div
+                          style={{
+                            textAlign: "center",
+                            marginTop: 8,
+                            fontSize: 24,
+                            fontWeight: 700,
+                            color:
+                              detalle.porcentaje >= 100 ? "#059669" : "#6366f1",
+                          }}
+                        >
+                          {this.percent(detalle.porcentaje)}
+                        </div>
+                      </div>
+
+                      {detalle.estado === "terminada" && (
+                        <div
+                          style={{
+                            padding: 12,
+                            background: "#d1fae5",
+                            borderRadius: 8,
+                            color: "#065f46",
+                            textAlign: "center",
+                            fontWeight: 600,
+                            marginBottom: 16,
+                          }}
+                        >
+                          🎉 ¡Meta completada exitosamente!
+                        </div>
+                      )}
+
+                      {detalle.estado === "en_pausa" && (
+                        <div
+                          style={{
+                            padding: 12,
+                            background: "#fef3c7",
+                            borderRadius: 8,
+                            color: "#92400e",
+                            fontSize: 14,
+                            marginBottom: 16,
+                          }}
+                        >
+                          ⏸️ Meta en pausa. Actívala para continuar progresando.
+                        </div>
+                      )}
+
+                      {detalle.estado === "en_progreso" && (
+                        <div
+                          style={{
+                            padding: 12,
+                            background: "#dbeafe",
+                            borderRadius: 8,
+                            color: "#1e40af",
+                            fontSize: 14,
+                            marginBottom: 16,
+                          }}
+                        >
+                          ⚡ Esta meta está activa y recibiendo progreso de tu
+                          balance.
+                        </div>
+                      )}
+
+                      {/* Acciones */}
+                      <div
+                        style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
+                      >
+                        {detalle.estado !== "terminada" && (
+                          <button
+                            className="btn btn-edit"
+                            onClick={() => this.setState({ editing: true })}
+                            disabled={loading}
+                            style={{ flex: 1 }}
+                          >
+                            ✏️ Editar meta
+                          </button>
+                        )}
+                        {detalle.estado === "en_progreso" && (
+                          <button
+                            className="btn btn-warning"
+                            onClick={() =>
+                              this.updateEstadoMeta(
+                                detalle.id_objetivo,
+                                "en_pausa"
+                              )
+                            }
+                            disabled={loading}
+                            style={{ flex: 1 }}
+                          >
+                            Pausar meta
+                          </button>
+                        )}
+                        {detalle.estado === "en_pausa" && (
+                          <button
+                            className="btn btn-success"
+                            onClick={() =>
+                              this.updateEstadoMeta(
+                                detalle.id_objetivo,
+                                "en_progreso"
+                              )
+                            }
+                            disabled={loading}
+                            style={{ flex: 1 }}
+                          >
+                            Activar meta
+                          </button>
+                        )}
+                        {detalle.estado === "en_progreso" &&
+                          detalle.porcentaje >= 100 && (
+                            <button
+                              className="btn btn-primary"
+                              onClick={() =>
+                                this.updateEstadoMeta(
+                                  detalle.id_objetivo,
+                                  "terminada"
+                                )
+                              }
+                              disabled={loading}
+                              style={{ flex: 1 }}
+                            >
+                              ✓ Marcar como completada
+                            </button>
+                          )}
+                      </div>
+
+                      {detalle.estado === "en_progreso" &&
+                        detalle.porcentaje < 100 && (
+                          <div
+                            style={{
+                              marginTop: 16,
+                              padding: 10,
+                              background: "#f8fafc",
+                              borderRadius: 6,
+                              fontSize: 13,
+                              color: "#6b7280",
+                            }}
+                          >
+                            💡 Sigue agregando ingresos en Daily Input para
+                            alcanzar tu meta. Te faltan{" "}
+                            {this.currency(
+                              detalle.monto_objetivo - detalle.progreso
+                            )}
+                          </div>
+                        )}
+                    </>
+                  )}
                 </div>
               )}
             </div>
