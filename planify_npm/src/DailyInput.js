@@ -11,8 +11,6 @@ import React, { useEffect, useState } from "react";
  * - accessToken (opcional)
  * - user (opcional) - objeto user (se usa su email para filtrar)
  *
- * Funciones importantes documentadas con FP-41 .. FP-50.
- * Comentarios: todos en español.
  */
 
 export default function DailyInput({
@@ -605,19 +603,30 @@ export default function DailyInput({
             {conceptosIncome.length === 0 ? (
               <div style={styles.smallMuted}>No hay conceptos de ingreso</div>
             ) : (
-              conceptosIncome.map((c) => (
-                <div
-                  key={c.id_concepto}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    padding: "8px 0",
-                    borderBottom: "1px dashed #f1f5f9",
-                  }}
-                >
-                  <div>{c.nombre_concepto}</div>
-                </div>
-              ))
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: "6px",
+                  alignItems: "center",
+                }}
+              >
+                {conceptosIncome.map((c) => (
+                  <div
+                    key={c.id_concepto}
+                    style={{
+                      padding: "4px 8px",
+                      background: "#f1f5f9",
+                      borderRadius: "6px",
+                      fontSize: "12px",
+                      color: "#374151",
+                      border: "1px solid #e5e7eb",
+                    }}
+                  >
+                    {c.nombre_concepto}
+                  </div>
+                ))}
+              </div>
             )}
             <div
               style={{
@@ -651,19 +660,30 @@ export default function DailyInput({
             {conceptosExpense.length === 0 ? (
               <div style={styles.smallMuted}>No hay conceptos de gasto</div>
             ) : (
-              conceptosExpense.map((c) => (
-                <div
-                  key={c.id_concepto}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    padding: "8px 0",
-                    borderBottom: "1px dashed #f1f5f9",
-                  }}
-                >
-                  <div>{c.nombre_concepto}</div>
-                </div>
-              ))
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: "6px",
+                  alignItems: "center",
+                }}
+              >
+                {conceptosExpense.map((c) => (
+                  <div
+                    key={c.id_concepto}
+                    style={{
+                      padding: "4px 8px",
+                      background: "#fef2f2",
+                      borderRadius: "6px",
+                      fontSize: "12px",
+                      color: "#374151",
+                      border: "1px solid #fecaca",
+                    }}
+                  >
+                    {c.nombre_concepto}
+                  </div>
+                ))}
+              </div>
             )}
             <div
               style={{
