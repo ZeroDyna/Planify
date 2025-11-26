@@ -5,6 +5,15 @@ import React, { useEffect, useState } from "react";
  * Usa movimiento_concepto cuando se selecciona un concepto
  * Usa movimiento_espontaneo cuando se ingresa un motivo libre
  *
+ * ACTUALIZACIÓN: llamadas a BD reemplazadas por RPC en Supabase.
+ * Se reutilizan funciones RPC creadas para Balance (get_cuenta_by_email, get_movements_range, get_all_active_movements)
+ * y se agregan RPC para conceptos e inserciones/borrados:
+ * - get_conceptos_by_cuenta(correo)
+ * - insert_movimiento_concepto(...)
+ * - insert_movimiento_espontaneo(...)
+ * - delete_movimiento_concepto_by_id(id)
+ * - delete_movimiento_espontaneo_by_id(id)
+ *
  * Props:
  * - SUPABASE_URL
  * - SUPABASE_KEY
@@ -51,6 +60,7 @@ export default function DailyInput({
   /* --------------------------------------------------------------------------
    * fetchCuenta
    * Auxiliar: obtiene la cuenta asociada al user.email y la guarda en state.
+   * Ahora usa RPC: get_cuenta_by_email
    * ----------------------------------------------------------------------- */
   const fetchCuenta = async () => {
     setMessage("");
@@ -61,14 +71,16 @@ export default function DailyInput({
         setCuenta(null);
         return;
       }
-      const url = `${SUPABASE_URL}/rest/v1/cuenta?select=correo_cuenta,nombre_cuenta&correo_usuario=eq.${encodeURIComponent(
-        email
-      )}&limit=1`;
-      const res = await fetch(url, { headers: headersAuth });
+
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_cuenta_by_email`, {
+        method: "POST",
+        headers: headersAuth,
+        body: JSON.stringify({ correo: email }),
+      });
 
       if (!res.ok) {
-        const errorText = await res.text();
-        console.error("Error fetchCuenta:", res.status, errorText);
+        const errorText = await res.text().catch(() => null);
+        console.error("Error fetchCuenta (RPC):", res.status, errorText);
         setMessage(`Error al obtener cuenta: ${res.status}`);
         setCuenta(null);
         return;
@@ -94,6 +106,7 @@ export default function DailyInput({
   /* --------------------------------------------------------------------------
    * FP-42: fetchConceptosByType
    * Obtiene conceptos activos de la cuenta y los separa en Income / Expense.
+   * Ahora usa RPC: get_conceptos_by_cuenta
    * ----------------------------------------------------------------------- */
   const fetchConceptosByType = async () => {
     if (!cuenta) {
@@ -103,15 +116,15 @@ export default function DailyInput({
       return;
     }
     try {
-      const url = `${SUPABASE_URL}/rest/v1/concepto?select=*&correo_cuenta=eq.${encodeURIComponent(
-        cuenta.correo_cuenta
-      )}&activo=eq.true&order=id_concepto.asc`;
-      console.log("Fetching conceptos from:", url);
-      const res = await fetch(url, { headers: headersAuth });
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_conceptos_by_cuenta`, {
+        method: "POST",
+        headers: headersAuth,
+        body: JSON.stringify({ correo: cuenta.correo_cuenta }),
+      });
 
       if (!res.ok) {
-        const errorText = await res.text();
-        console.error("Error fetchConceptos:", res.status, errorText);
+        const errorText = await res.text().catch(() => null);
+        console.error("Error fetchConceptos (RPC):", res.status, errorText);
         setMessage("Error al cargar conceptos.");
         setConceptosIncome([]);
         setConceptosExpense([]);
@@ -119,11 +132,8 @@ export default function DailyInput({
       }
 
       const data = await res.json();
-      console.log("Conceptos cargados desde DB:", data);
       const incomes = (data || []).filter((c) => c.tipo === true);
       const expenses = (data || []).filter((c) => c.tipo === false);
-      console.log("Conceptos Income filtrados:", incomes);
-      console.log("Conceptos Expense filtrados:", expenses);
       setConceptosIncome(incomes);
       setConceptosExpense(expenses);
     } catch (err) {
@@ -137,7 +147,7 @@ export default function DailyInput({
   /* --------------------------------------------------------------------------
    * FP-43: fetchMovementsForDate
    * Carga movimientos activos para la fecha y calcula totales.
-   * Obtiene tanto movimiento_concepto como movimiento_espontaneo.
+   * Usa RPC get_movements_range (start_date == end_date == dateStr)
    * ----------------------------------------------------------------------- */
   const fetchMovementsForDate = async (dateStr) => {
     if (!cuenta) {
@@ -148,52 +158,39 @@ export default function DailyInput({
     setLoading(true);
     setMessage("");
     try {
-      // Obtener movimientos con concepto
-      const urlConcepto = `${SUPABASE_URL}/rest/v1/movimiento_concepto?select=*,concepto:id_concepto(nombre_concepto,tipo)&fecha_operacion=eq.${encodeURIComponent(
-        dateStr
-      )}&correo_cuenta=eq.${encodeURIComponent(
-        cuenta.correo_cuenta
-      )}&order=id_movimiento_concepto.asc`;
-
-      const resConcepto = await fetch(urlConcepto, { headers: headersAuth });
-
-      // Obtener movimientos espontáneos
-      const urlEspontaneo = `${SUPABASE_URL}/rest/v1/movimiento_espontaneo?select=*&fecha_operacion=eq.${encodeURIComponent(
-        dateStr
-      )}&correo_cuenta=eq.${encodeURIComponent(
-        cuenta.correo_cuenta
-      )}&order=id_movimiento_espontaneo.asc`;
-
-      const resEspontaneo = await fetch(urlEspontaneo, {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_movements_range`, {
+        method: "POST",
         headers: headersAuth,
+        body: JSON.stringify({
+          correo: cuenta.correo_cuenta,
+          start_date: dateStr,
+          end_date: dateStr,
+        }),
       });
 
-      let allMovements = [];
-
-      if (resConcepto.ok) {
-        const dataConcepto = await resConcepto.json();
-        const movConcepto = (dataConcepto || []).map((m) => ({
-          ...m,
-          sourceTable: "concepto",
-          nombre: m.concepto?.nombre_concepto || "Concepto",
-          tipo: m.concepto?.tipo || false,
-          id: m.id_movimiento_concepto,
-        }));
-        allMovements = [...allMovements, ...movConcepto];
+      if (!res.ok) {
+        const errorText = await res.text().catch(() => null);
+        console.error("Error fetchMovementsForDate (RPC):", res.status, errorText);
+        setMessage("Error al cargar movimientos.");
+        setMovimientos([]);
+        setTotales({ income: 0, expense: 0 });
+        return;
       }
 
-      if (resEspontaneo.ok) {
-        const dataEspontaneo = await resEspontaneo.json();
-        const movEspontaneo = (dataEspontaneo || []).map((m) => ({
-          ...m,
-          sourceTable: "espontaneo",
-          nombre: m.motivo || "Sin motivo",
-          id: m.id_movimiento_espontaneo,
-        }));
-        allMovements = [...allMovements, ...movEspontaneo];
-      }
+      const data = await res.json().catch(() => []);
+      // Data items from RPC may use snake_case (nombre_movimiento, source_table, id)
+      // Normalize to the shape used by the component: { nombre, tipo, monto, correo_cuenta, sourceTable, id }
+      const allMovements = (data || []).map((m) => ({
+        ...m,
+        nombre: m.nombre_movimiento ?? m.nombre ?? "",
+        tipo: m.tipo === undefined ? false : m.tipo,
+        monto: m.monto ?? 0,
+        correo_cuenta: m.correo_cuenta ?? m.correoCuenta ?? "",
+        sourceTable: m.source_table ?? m.sourceTable ?? "espontaneo",
+        id: m.id ?? m.id_movimiento_concepto ?? m.id_movimiento_espontaneo ?? null,
+      }));
 
-      console.log("All movements loaded:", allMovements);
+      console.log("All movements loaded (RPC):", allMovements);
       setMovimientos(allMovements);
       calculateTotals(allMovements);
     } catch (err) {
@@ -225,9 +222,6 @@ export default function DailyInput({
    * Abre el modal para añadir movimiento y resetea formulario.
    * ----------------------------------------------------------------------- */
   const openAddMovementModal = (tipo = false) => {
-    console.log("Opening modal with tipo:", tipo);
-    console.log("Available incomes:", conceptosIncome);
-    console.log("Available expenses:", conceptosExpense);
     setForm({
       useConcepto: false,
       conceptoId: "",
@@ -268,7 +262,10 @@ export default function DailyInput({
 
   /* --------------------------------------------------------------------------
    * FP-47: addMovement
-   * Inserta movimiento (concepto o espontáneo); luego refresca movimientos y totales.
+   * Inserta movimiento (concepto o espontáneo) vía RPC; luego refresca movimientos y totales.
+   * RPCs esperadas:
+   * - insert_movimiento_concepto(correo_cuenta, contador, fecha_operacion, monto, id_concepto)
+   * - insert_movimiento_espontaneo(correo_cuenta, contador, fecha_operacion, motivo, tipo, monto)
    * ----------------------------------------------------------------------- */
   const addMovement = async (movement) => {
     setSaving(true);
@@ -290,7 +287,7 @@ export default function DailyInput({
       let res;
 
       if (movement.useConcepto) {
-        // Usar movimiento_concepto
+        // Usar RPC para insertar movimiento_concepto
         const body = {
           correo_cuenta: cuenta.correo_cuenta,
           contador: 1,
@@ -299,9 +296,9 @@ export default function DailyInput({
           id_concepto: Number(movement.conceptoId),
         };
 
-        console.log("Creating movimiento_concepto:", body);
+        console.log("RPC insert_movimiento_concepto:", body);
 
-        res = await fetch(`${SUPABASE_URL}/rest/v1/movimiento_concepto`, {
+        res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/insert_movimiento_concepto`, {
           method: "POST",
           headers: {
             ...headersAuth,
@@ -310,7 +307,7 @@ export default function DailyInput({
           body: JSON.stringify(body),
         });
       } else {
-        // Usar movimiento_espontaneo
+        // Usar RPC para insertar movimiento_espontaneo
         const body = {
           correo_cuenta: cuenta.correo_cuenta,
           contador: 1,
@@ -320,9 +317,9 @@ export default function DailyInput({
           monto: Number(movement.monto),
         };
 
-        console.log("Creating movimiento_espontaneo:", body);
+        console.log("RPC insert_movimiento_espontaneo:", body);
 
-        res = await fetch(`${SUPABASE_URL}/rest/v1/movimiento_espontaneo`, {
+        res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/insert_movimiento_espontaneo`, {
           method: "POST",
           headers: {
             ...headersAuth,
@@ -333,15 +330,15 @@ export default function DailyInput({
       }
 
       if (!res.ok) {
-        const errorText = await res.text();
-        console.error("addMovement error:", res.status, errorText);
+        const errorText = await res.text().catch(() => null);
+        console.error("addMovement error (RPC):", res.status, errorText);
         setMessage(`Error al guardar: ${errorText || res.status}`);
         setSaving(false);
         return;
       }
 
-      const data = await res.json();
-      console.log("Movement created:", data);
+      const data = await res.json().catch(() => null);
+      console.log("Movement created (RPC):", data);
 
       await fetchMovementsForDate(fecha);
       setShowAddModal(false);
@@ -356,26 +353,32 @@ export default function DailyInput({
 
   /* --------------------------------------------------------------------------
    * FP-48: deleteMovement
-   * Borrado físico: DELETE según sourceTable (concepto o espontáneo), luego refresca.
+   * Borrado físico vía RPC por id según sourceTable, luego refresca.
+   * RPCs esperadas:
+   * - delete_movimiento_concepto_by_id(id)
+   * - delete_movimiento_espontaneo_by_id(id)
    * ----------------------------------------------------------------------- */
   const deleteMovement = async (movement) => {
     if (!window.confirm("¿Eliminar movimiento?")) return;
     try {
-      let url;
+      let res;
       if (movement.sourceTable === "concepto") {
-        url = `${SUPABASE_URL}/rest/v1/movimiento_concepto?id_movimiento_concepto=eq.${movement.id}`;
+        res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/delete_movimiento_concepto_by_id`, {
+          method: "POST",
+          headers: headersAuth,
+          body: JSON.stringify({ id: movement.id }),
+        });
       } else {
-        url = `${SUPABASE_URL}/rest/v1/movimiento_espontaneo?id_movimiento_espontaneo=eq.${movement.id}`;
+        res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/delete_movimiento_espontaneo_by_id`, {
+          method: "POST",
+          headers: headersAuth,
+          body: JSON.stringify({ id: movement.id }),
+        });
       }
 
-      const res = await fetch(url, {
-        method: "DELETE",
-        headers: headersAuth,
-      });
-
       if (!res.ok) {
-        const errorText = await res.text();
-        console.error("deleteMovement error:", res.status, errorText);
+        const errorText = await res.text().catch(() => null);
+        console.error("deleteMovement error (RPC):", res.status, errorText);
         setMessage(`Error al eliminar: ${errorText || res.status}`);
         return;
       }
@@ -411,7 +414,7 @@ export default function DailyInput({
     setLoading(true);
     setMessage("");
     await fetchCuenta();
-    // fetchConceptosByType se llama desde useEffect cuando cuenta está lista
+    // fetchConceptosByType se llama desde useEffect cuando cuenta esté lista
     await fetchMovementsForDate(fecha);
     setLoading(false);
     console.log("=== DailyInput inicializado ===");
@@ -420,6 +423,7 @@ export default function DailyInput({
   // Inicializar al montar o cuando cambian user/accessToken
   useEffect(() => {
     initDailyInput();
+    // eslint-disable-next-line
   }, [user, accessToken]);
 
   // Cargar conceptos cuando la cuenta esté lista
@@ -428,6 +432,7 @@ export default function DailyInput({
       console.log("Cuenta cargada, obteniendo conceptos para:", cuenta);
       fetchConceptosByType();
     }
+    // eslint-disable-next-line
   }, [cuenta]);
 
   // Helper de formato
@@ -514,11 +519,6 @@ export default function DailyInput({
   // Seleccionar conceptos según el tipo del movimiento
   const conceptosDisponibles = form.tipo ? conceptosIncome : conceptosExpense;
 
-  console.log("Form tipo:", form.tipo);
-  console.log("Conceptos Income:", conceptosIncome);
-  console.log("Conceptos Expense:", conceptosExpense);
-  console.log("Conceptos disponibles:", conceptosDisponibles);
-
   // Render
   return (
     <div style={styles.container}>
@@ -533,9 +533,7 @@ export default function DailyInput({
       >
         <div>
           <h3 style={{ margin: 0 }}>Daily Input</h3>
-          <div style={styles.smallMuted}>
-            Registrar ingresos y gastos por fecha
-          </div>
+          <div style={styles.smallMuted}>Registrar ingresos y gastos por fecha</div>
         </div>
 
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -554,11 +552,7 @@ export default function DailyInput({
               }}
             />
           </div>
-          <button
-            onClick={() => initDailyInput()}
-            style={styles.btnGhost}
-            disabled={loading}
-          >
+          <button onClick={() => initDailyInput()} style={styles.btnGhost} disabled={loading}>
             {loading ? "Cargando..." : "Refrescar"}
           </button>
         </div>
@@ -570,9 +564,7 @@ export default function DailyInput({
             color: message.includes("correctamente") ? "#059669" : "#b91c1c",
             marginBottom: 12,
             padding: 10,
-            background: message.includes("correctamente")
-              ? "#d1fae5"
-              : "#fee2e2",
+            background: message.includes("correctamente") ? "#d1fae5" : "#fee2e2",
             borderRadius: 6,
           }}
         >
@@ -580,37 +572,21 @@ export default function DailyInput({
         </div>
       )}
 
-      <div
-        style={{
-          display: "flex",
-          gap: 16,
-          alignItems: "stretch",
-          marginBottom: 16,
-        }}
-      >
+      <div style={{ display: "flex", gap: 16, alignItems: "stretch", marginBottom: 16 }}>
         <div style={{ flex: 1, ...styles.card }}>
           <div style={styles.columnHeader}>
             <div>
               <strong>Incomes</strong>
               <div style={styles.smallMuted}>Conceptos activos</div>
             </div>
-            <div style={styles.totalBadge}>
-              {formatCurrency(totales.income)}
-            </div>
+            <div style={styles.totalBadge}>{formatCurrency(totales.income)}</div>
           </div>
 
           <div style={{ marginTop: 12 }}>
             {conceptosIncome.length === 0 ? (
               <div style={styles.smallMuted}>No hay conceptos de ingreso</div>
             ) : (
-              <div
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: "6px",
-                  alignItems: "center",
-                }}
-              >
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center" }}>
                 {conceptosIncome.map((c) => (
                   <div
                     key={c.id_concepto}
@@ -628,17 +604,8 @@ export default function DailyInput({
                 ))}
               </div>
             )}
-            <div
-              style={{
-                marginTop: 12,
-                display: "flex",
-                justifyContent: "flex-end",
-              }}
-            >
-              <button
-                onClick={() => openAddMovementModal(true)}
-                style={styles.btnPrimary}
-              >
+            <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end" }}>
+              <button onClick={() => openAddMovementModal(true)} style={styles.btnPrimary}>
                 Add Income
               </button>
             </div>
@@ -651,23 +618,14 @@ export default function DailyInput({
               <strong>Expenses</strong>
               <div style={styles.smallMuted}>Conceptos activos</div>
             </div>
-            <div style={{ ...styles.totalBadge, background: "#fff1f2" }}>
-              {formatCurrency(totales.expense)}
-            </div>
+            <div style={{ ...styles.totalBadge, background: "#fff1f2" }}>{formatCurrency(totales.expense)}</div>
           </div>
 
           <div style={{ marginTop: 12 }}>
             {conceptosExpense.length === 0 ? (
               <div style={styles.smallMuted}>No hay conceptos de gasto</div>
             ) : (
-              <div
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: "6px",
-                  alignItems: "center",
-                }}
-              >
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center" }}>
                 {conceptosExpense.map((c) => (
                   <div
                     key={c.id_concepto}
@@ -685,17 +643,8 @@ export default function DailyInput({
                 ))}
               </div>
             )}
-            <div
-              style={{
-                marginTop: 12,
-                display: "flex",
-                justifyContent: "flex-end",
-              }}
-            >
-              <button
-                onClick={() => openAddMovementModal(false)}
-                style={styles.btnPrimary}
-              >
+            <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end" }}>
+              <button onClick={() => openAddMovementModal(false)} style={styles.btnPrimary}>
                 Add Expense
               </button>
             </div>
@@ -704,18 +653,10 @@ export default function DailyInput({
       </div>
 
       <div style={{ ...styles.card }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <strong>Movimientos — {fecha}</strong>
-            <div style={styles.smallMuted}>
-              Lista de movimientos registrados
-            </div>
+            <div style={styles.smallMuted}>Lista de movimientos registrados</div>
           </div>
           <button onClick={() => initDailyInput()} style={styles.btnGhost}>
             Actualizar
@@ -741,7 +682,7 @@ export default function DailyInput({
               </tr>
             ) : (
               movimientos.map((m, idx) => (
-                <tr key={`${m.sourceTable}-${m.id}-${idx}`}>
+                <tr key={`${m.sourceTable}-${m.id || idx}`}>
                   <td style={styles.td}>{m.nombre}</td>
                   <td style={styles.td}>
                     <span
@@ -762,33 +703,16 @@ export default function DailyInput({
                         padding: "2px 8px",
                         borderRadius: 4,
                         fontSize: 11,
-                        background:
-                          m.sourceTable === "concepto" ? "#e0e7ff" : "#fef3c7",
-                        color:
-                          m.sourceTable === "concepto" ? "#3730a3" : "#92400e",
+                        background: m.sourceTable === "concepto" ? "#e0e7ff" : "#fef3c7",
+                        color: m.sourceTable === "concepto" ? "#3730a3" : "#92400e",
                       }}
                     >
                       {m.sourceTable === "concepto" ? "Concepto" : "Libre"}
                     </span>
                   </td>
-                  <td
-                    style={{
-                      ...styles.td,
-                      textAlign: "right",
-                      fontWeight: 600,
-                    }}
-                  >
-                    {formatCurrency(m.monto)}
-                  </td>
+                  <td style={{ ...styles.td, textAlign: "right", fontWeight: 600 }}>{formatCurrency(m.monto)}</td>
                   <td style={{ ...styles.td, textAlign: "right" }}>
-                    <button
-                      onClick={() => deleteMovement(m)}
-                      style={{
-                        ...styles.btnGhost,
-                        fontSize: 12,
-                        padding: "4px 8px",
-                      }}
-                    >
+                    <button onClick={() => deleteMovement(m)} style={{ ...styles.btnGhost, fontSize: 12, padding: "4px 8px" }}>
                       Eliminar
                     </button>
                   </td>
@@ -803,25 +727,10 @@ export default function DailyInput({
       {showAddModal && (
         <div style={styles.modalOverlay} onClick={() => setShowAddModal(false)}>
           <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <h4 style={{ marginTop: 0 }}>
-              Añadir movimiento — {form.tipo ? "Income" : "Expense"}
-            </h4>
+            <h4 style={{ marginTop: 0 }}>Añadir movimiento — {form.tipo ? "Income" : "Expense"}</h4>
 
-            <div
-              style={{
-                marginBottom: 16,
-                padding: 12,
-                background: "#f9fafb",
-                borderRadius: 6,
-              }}
-            >
-              <label
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  cursor: "pointer",
-                }}
-              >
+            <div style={{ marginBottom: 16, padding: 12, background: "#f9fafb", borderRadius: 6 }}>
+              <label style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
                 <input
                   type="checkbox"
                   checked={form.useConcepto}
@@ -841,38 +750,20 @@ export default function DailyInput({
 
             {form.useConcepto ? (
               <div style={{ marginBottom: 10 }}>
-                <label
-                  style={{ display: "block", fontWeight: 600, marginBottom: 6 }}
-                >
+                <label style={{ display: "block", fontWeight: 600, marginBottom: 6 }}>
                   Concepto {form.tipo ? "(Ingresos)" : "(Gastos)"}
                 </label>
                 {conceptosDisponibles.length === 0 ? (
-                  <div
-                    style={{
-                      padding: 12,
-                      background: "#fef3c7",
-                      borderRadius: 6,
-                      color: "#92400e",
-                      fontSize: 14,
-                    }}
-                  >
-                    No hay conceptos de {form.tipo ? "ingreso" : "gasto"}{" "}
-                    disponibles.
+                  <div style={{ padding: 12, background: "#fef3c7", borderRadius: 6, color: "#92400e", fontSize: 14 }}>
+                    No hay conceptos de {form.tipo ? "ingreso" : "gasto"} disponibles.
                     <br />
                     Crea conceptos primero en la sección de Configuración.
                   </div>
                 ) : (
                   <select
                     value={form.conceptoId}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, conceptoId: e.target.value }))
-                    }
-                    style={{
-                      width: "100%",
-                      padding: 8,
-                      borderRadius: 6,
-                      border: "1px solid #e5e7eb",
-                    }}
+                    onChange={(e) => setForm((f) => ({ ...f, conceptoId: e.target.value }))}
+                    style={{ width: "100%", padding: 8, borderRadius: 6, border: "1px solid #e5e7eb" }}
                   >
                     <option value="">Selecciona un concepto</option>
                     {conceptosDisponibles.map((c) => (
@@ -885,66 +776,35 @@ export default function DailyInput({
               </div>
             ) : (
               <div style={{ marginBottom: 10 }}>
-                <label
-                  style={{ display: "block", fontWeight: 600, marginBottom: 6 }}
-                >
-                  Motivo
-                </label>
+                <label style={{ display: "block", fontWeight: 600, marginBottom: 6 }}>Motivo</label>
                 <input
                   type="text"
                   value={form.motivo}
                   maxLength={100}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, motivo: e.target.value }))
-                  }
+                  onChange={(e) => setForm((f) => ({ ...f, motivo: e.target.value }))}
                   placeholder="Ej: Transporte, Salario"
-                  style={{
-                    width: "100%",
-                    padding: 8,
-                    borderRadius: 6,
-                    border: "1px solid #e5e7eb",
-                  }}
+                  style={{ width: "100%", padding: 8, borderRadius: 6, border: "1px solid #e5e7eb" }}
                 />
               </div>
             )}
 
             <div style={{ marginBottom: 16 }}>
-              <label
-                style={{ display: "block", fontWeight: 600, marginBottom: 6 }}
-              >
-                Monto
-              </label>
+              <label style={{ display: "block", fontWeight: 600, marginBottom: 6 }}>Monto</label>
               <input
                 type="number"
                 step="0.01"
                 value={form.monto}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, monto: e.target.value }))
-                }
+                onChange={(e) => setForm((f) => ({ ...f, monto: e.target.value }))}
                 placeholder="0.00"
-                style={{
-                  width: "100%",
-                  padding: 8,
-                  borderRadius: 6,
-                  border: "1px solid #e5e7eb",
-                }}
+                style={{ width: "100%", padding: 8, borderRadius: 6, border: "1px solid #e5e7eb" }}
               />
             </div>
 
-            <div
-              style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}
-            >
-              <button
-                onClick={() => setShowAddModal(false)}
-                style={styles.btnGhost}
-              >
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button onClick={() => setShowAddModal(false)} style={styles.btnGhost}>
                 Cancelar
               </button>
-              <button
-                onClick={() => addMovement(form)}
-                disabled={saving}
-                style={styles.btnPrimary}
-              >
+              <button onClick={() => addMovement(form)} disabled={saving} style={styles.btnPrimary}>
                 {saving ? "Guardando..." : "Guardar"}
               </button>
             </div>

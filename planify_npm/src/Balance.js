@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 
 /**
  * Balance (MK-005) - Vista para consultar balances y generar reportes por periodo.
- * ACTUALIZADO: Usa movimiento_concepto y movimiento_espontaneo en lugar de movimiento unificado
+ * ACTUALIZADO: Usa funciones RPC en Supabase en lugar de construir queries REST/SQL en el cliente.
  *
  * Props:
  * - SUPABASE_URL
@@ -10,14 +10,7 @@ import React, { useEffect, useState } from "react";
  * - accessToken (opcional)
  * - user (opcional) - objeto user (se usa su email para filtrar)
  *
- * Funciones importantes documentadas con FP-51 .. FP-56 (comentarios en español).
- *
- * Restricciones UX implementadas:
- * - Fecha inicio: obligatoria, no puede ser futura.
- * - Fecha fin: obligatoria, no puede ser futura, debe ser >= fecha inicio.
- * - El botón "Download report" valida rango antes de generar CSV.
- *
- * Nota: usa las tablas movimiento_concepto y movimiento_espontaneo.
+ * Funciones importantes documentadas con FP-51 .. FP-57 (comentarios en español).
  */
 
 export default function Balance({
@@ -50,6 +43,7 @@ export default function Balance({
 
   /* FP-51: fetchCuentaBalance
    * Obtiene la cuenta asociada al usuario (por email) y la guarda en estado.
+   * Ahora llama a la función RPC: get_cuenta_by_email
    */
   const fetchCuentaBalance = async () => {
     setMessage("");
@@ -60,15 +54,19 @@ export default function Balance({
         setMessage("Inicia sesión para ver el balance.");
         return;
       }
-      const url = `${SUPABASE_URL}/rest/v1/cuenta?select=correo_cuenta,nombre_cuenta&correo_usuario=eq.${encodeURIComponent(
-        email
-      )}&limit=1`;
-      const res = await fetch(url, { headers: headersAuth });
+
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_cuenta_by_email`, {
+        method: "POST",
+        headers: headersAuth,
+        body: JSON.stringify({ correo: email }),
+      });
+
       if (!res.ok) {
         setCuenta(null);
         setMessage("No se pudo obtener la cuenta.");
         return;
       }
+
       const data = await res.json();
       if (Array.isArray(data) && data.length) {
         setCuenta({
@@ -88,8 +86,7 @@ export default function Balance({
 
   /* FP-52: fetchMovementsRange
    * Carga los movimientos activos para la cuenta en el rango startDate..endDate.
-   * Actualiza movementsRange y deja listo para mostrar y descargar.
-   * ACTUALIZADO: Obtiene datos de movimiento_concepto y movimiento_espontaneo.
+   * Ahora llama a la función RPC: get_movements_range (devuelve unión y ordenamiento).
    */
   const fetchMovementsRange = async (start, end) => {
     if (!cuenta) {
@@ -99,64 +96,27 @@ export default function Balance({
     setLoading(true);
     setMessage("");
     try {
-      // Obtener movimientos con concepto
-      const urlConcepto = `${SUPABASE_URL}/rest/v1/movimiento_concepto?select=*,concepto:id_concepto(nombre_concepto,tipo)&fecha_operacion=gte.${encodeURIComponent(
-        start
-      )}&fecha_operacion=lte.${encodeURIComponent(
-        end
-      )}&correo_cuenta=eq.${encodeURIComponent(
-        cuenta.correo_cuenta
-      )}&order=fecha_operacion.asc`;
-
-      const resConcepto = await fetch(urlConcepto, { headers: headersAuth });
-
-      // Obtener movimientos espontáneos
-      const urlEspontaneo = `${SUPABASE_URL}/rest/v1/movimiento_espontaneo?select=*&fecha_operacion=gte.${encodeURIComponent(
-        start
-      )}&fecha_operacion=lte.${encodeURIComponent(
-        end
-      )}&correo_cuenta=eq.${encodeURIComponent(
-        cuenta.correo_cuenta
-      )}&order=fecha_operacion.asc`;
-
-      const resEspontaneo = await fetch(urlEspontaneo, {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_movements_range`, {
+        method: "POST",
         headers: headersAuth,
+        body: JSON.stringify({
+          correo: cuenta.correo_cuenta,
+          start_date: start,
+          end_date: end,
+        }),
       });
 
-      let allMovements = [];
-
-      if (resConcepto.ok) {
-        const dataConcepto = await resConcepto.json();
-        const movConcepto = (dataConcepto || []).map((m) => ({
-          fecha: m.fecha_operacion,
-          nombre_movimiento: m.concepto?.nombre_concepto || "Concepto",
-          tipo: m.concepto?.tipo || false,
-          monto: m.monto,
-          correo_cuenta: m.correo_cuenta,
-          sourceTable: "concepto",
-          id: m.id_movimiento_concepto,
-        }));
-        allMovements = [...allMovements, ...movConcepto];
+      if (!res.ok) {
+        const txt = await res.text().catch(() => null);
+        console.error("fetchMovementsRange failed", res.status, txt);
+        setMessage("Error al cargar movimientos.");
+        setMovementsRange([]);
+        return;
       }
 
-      if (resEspontaneo.ok) {
-        const dataEspontaneo = await resEspontaneo.json();
-        const movEspontaneo = (dataEspontaneo || []).map((m) => ({
-          fecha: m.fecha_operacion,
-          nombre_movimiento: m.motivo || "Sin motivo",
-          tipo: m.tipo,
-          monto: m.monto,
-          correo_cuenta: m.correo_cuenta,
-          sourceTable: "espontaneo",
-          id: m.id_movimiento_espontaneo,
-        }));
-        allMovements = [...allMovements, ...movEspontaneo];
-      }
-
-      // Ordenar por fecha
-      allMovements.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
-
-      setMovementsRange(allMovements);
+      const allMovements = await res.json().catch(() => []);
+      // PostgREST/RPC ya devuelve array ordenado por fecha (según la función en DB)
+      setMovementsRange(allMovements || []);
     } catch (err) {
       console.error("fetchMovementsRange error", err);
       setMessage("Error de conexión al cargar movimientos.");
@@ -168,7 +128,7 @@ export default function Balance({
 
   /* FP-53: fetchAllActiveMovements
    * Carga todos los movimientos activos para la cuenta (histórico) para cálculos agregados.
-   * ACTUALIZADO: Obtiene datos de movimiento_concepto y movimiento_espontaneo.
+   * Ahora llama a la función RPC: get_all_active_movements
    */
   const fetchAllActiveMovements = async () => {
     if (!cuenta) {
@@ -176,51 +136,21 @@ export default function Balance({
       return;
     }
     try {
-      // Obtener todos los movimientos con concepto
-      const urlConcepto = `${SUPABASE_URL}/rest/v1/movimiento_concepto?select=*,concepto:id_concepto(nombre_concepto,tipo)&correo_cuenta=eq.${encodeURIComponent(
-        cuenta.correo_cuenta
-      )}&order=fecha_operacion.asc`;
-
-      const resConcepto = await fetch(urlConcepto, { headers: headersAuth });
-
-      // Obtener todos los movimientos espontáneos
-      const urlEspontaneo = `${SUPABASE_URL}/rest/v1/movimiento_espontaneo?select=*&correo_cuenta=eq.${encodeURIComponent(
-        cuenta.correo_cuenta
-      )}&order=fecha_operacion.asc`;
-
-      const resEspontaneo = await fetch(urlEspontaneo, {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_all_active_movements`, {
+        method: "POST",
         headers: headersAuth,
+        body: JSON.stringify({ correo: cuenta.correo_cuenta }),
       });
 
-      let allMovements = [];
-
-      if (resConcepto.ok) {
-        const dataConcepto = await resConcepto.json();
-        const movConcepto = (dataConcepto || []).map((m) => ({
-          fecha: m.fecha_operacion,
-          nombre_movimiento: m.concepto?.nombre_concepto || "Concepto",
-          tipo: m.concepto?.tipo || false,
-          monto: m.monto,
-          correo_cuenta: m.correo_cuenta,
-          sourceTable: "concepto",
-        }));
-        allMovements = [...allMovements, ...movConcepto];
+      if (!res.ok) {
+        const txt = await res.text().catch(() => null);
+        console.error("fetchAllActiveMovements failed", res.status, txt);
+        setMovementsAllActive([]);
+        return;
       }
 
-      if (resEspontaneo.ok) {
-        const dataEspontaneo = await resEspontaneo.json();
-        const movEspontaneo = (dataEspontaneo || []).map((m) => ({
-          fecha: m.fecha_operacion,
-          nombre_movimiento: m.motivo || "Sin motivo",
-          tipo: m.tipo,
-          monto: m.monto,
-          correo_cuenta: m.correo_cuenta,
-          sourceTable: "espontaneo",
-        }));
-        allMovements = [...allMovements, ...movEspontaneo];
-      }
-
-      setMovementsAllActive(allMovements);
+      const allMovements = await res.json().catch(() => []);
+      setMovementsAllActive(allMovements || []);
     } catch (err) {
       console.error("fetchAllActiveMovements error", err);
       setMovementsAllActive([]);
@@ -229,8 +159,6 @@ export default function Balance({
 
   /* FP-54: calculateTotals
    * Calcula totales (income, expense, net) a partir de un array de movimientos.
-   * Retorna { income, expense, net }.
-   * ACTUALIZADO: Usa tipo boolean (true/false) en lugar de strings.
    */
   const calculateTotals = (movs) => {
     const inc = (movs || [])
@@ -264,8 +192,7 @@ export default function Balance({
 
   /* FP-56: downloadReport
    * Valida rango, genera CSV de movementsRange y dispara descarga del archivo.
-   * Muestra mensajes de error/estado en UI.
-   * ACTUALIZADO: Incluye columna de origen (Concepto/Libre).
+   * Llama a fetchMovementsRange antes de generar para asegurar datos.
    */
   const downloadReport = async () => {
     setMessage("");
@@ -293,7 +220,9 @@ export default function Balance({
         m.tipo ? "Income" : "Expense",
         m.monto ?? "",
         m.correo_cuenta || "",
-        m.sourceTable === "concepto" ? "Concepto" : "Libre",
+        m.source_table === "concepto" || m.sourceTable === "concepto"
+          ? "Concepto"
+          : "Libre",
       ]);
       const csv = [header, ...rows]
         .map((r) => r.map((c) => `"${c}"`).join(","))
@@ -318,8 +247,7 @@ export default function Balance({
   };
 
   /* FP-57: initBalance
-   * Inicializa la vista: carga cuenta, movimientos del rango y totales históricos.
-   * Llamado al montar o cuando cambia user/accessToken.
+   * Inicializa la vista: carga cuenta.
    */
   const initBalance = async () => {
     setLoading(true);
@@ -597,7 +525,9 @@ export default function Balance({
                 ) : (
                   movementsRange.map((m, idx) => (
                     <tr
-                      key={`${m.sourceTable}-${m.id || idx}-${m.fecha}`}
+                      key={`${m.source_table || m.sourceTable}-${m.id || idx}-${
+                        m.fecha
+                      }`}
                       style={{ borderTop: "1px solid #f3f4f6" }}
                     >
                       <td style={{ padding: "8px 6px" }}>

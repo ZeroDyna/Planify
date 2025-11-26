@@ -39,12 +39,11 @@ export default class ObjetivoPanel extends React.Component {
     try {
       const emailFromUser =
         user?.email || user?.correo || user?.user?.email || user?._raw?.correo;
-      let url = `${SUPABASE_URL}/rest/v1/cuenta?select=correo_cuenta,nombre_cuenta&limit=1`;
-      if (emailFromUser) {
-        url = `${SUPABASE_URL}/rest/v1/cuenta?select=correo_cuenta,nombre_cuenta&correo_usuario=eq.${encodeURIComponent(
-          emailFromUser
-        )}&limit=1`;
+      if (!emailFromUser) {
+        this.setState({ message: "", cuenta: null });
+        return;
       }
+
       const headersBase = {
         "Content-Type": "application/json",
         apikey: this.props.SUPABASE_KEY,
@@ -52,7 +51,14 @@ export default class ObjetivoPanel extends React.Component {
       const headersAuth = accessToken
         ? { ...headersBase, Authorization: `Bearer ${accessToken}` }
         : headersBase;
-      const res = await fetch(url, { headers: headersAuth });
+
+      // Llamada RPC: get_cuenta_by_email (param name: correo)
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_cuenta_by_email`, {
+        method: "POST",
+        headers: headersAuth,
+        body: JSON.stringify({ correo: emailFromUser }),
+      });
+
       if (!res.ok) {
         this.setState({
           message: "No se pudo obtener la cuenta del usuario.",
@@ -60,6 +66,7 @@ export default class ObjetivoPanel extends React.Component {
         });
         return;
       }
+
       const data = await res.json();
       if (!Array.isArray(data) || data.length === 0) {
         this.setState({
@@ -95,8 +102,6 @@ export default class ObjetivoPanel extends React.Component {
     }
     this.setState({ loadingList: true, message: "" });
     try {
-      const encodedCorreo = encodeURIComponent(cuenta.correo_cuenta);
-      const url = `${SUPABASE_URL}/rest/v1/objetivo?select=*&correo_cuenta=eq.${encodedCorreo}&order=numero_objetivo.asc`;
       const headersBase = {
         "Content-Type": "application/json",
         apikey: this.props.SUPABASE_KEY,
@@ -104,7 +109,14 @@ export default class ObjetivoPanel extends React.Component {
       const headersAuth = accessToken
         ? { ...headersBase, Authorization: `Bearer ${accessToken}` }
         : headersBase;
-      const res = await fetch(url, { headers: headersAuth });
+
+      // Llamada RPC: get_objetivos_by_cuenta (param name: correo)
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_objetivos_by_cuenta`, {
+        method: "POST",
+        headers: headersAuth,
+        body: JSON.stringify({ correo: cuenta.correo_cuenta }),
+      });
+
       if (!res.ok) {
         this.setState({
           message: "Error al cargar metas.",
@@ -164,15 +176,17 @@ export default class ObjetivoPanel extends React.Component {
       const hayMetasActivas = objetivos.some((o) => o.estado === "en_progreso");
       const estadoInicial = hayMetasActivas ? "en_pausa" : "en_progreso";
 
+      // Preparar body con los nombres de parámetro de la función RPC (p_...)
       const body = {
-        correo_cuenta: cuenta.correo_cuenta,
-        nombre: nombre.trim(),
-        fecha_objetivo,
-        monto_objetivo: montoNum,
-        estado: estadoInicial,
+        p_correo_cuenta: cuenta.correo_cuenta,
+        p_nombre: nombre.trim(),
+        p_fecha_objetivo: fecha_objetivo,
+        p_monto_objetivo: montoNum,
+        p_estado: estadoInicial,
       };
 
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/objetivo`, {
+      // Llamar RPC insert_objetivo
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/insert_objetivo`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -240,26 +254,26 @@ export default class ObjetivoPanel extends React.Component {
     this.setState({ loading: true });
     try {
       const body = {
-        nombre: nombre.trim(),
-        monto_objetivo: montoNum,
+        p_id: detalle.id_objetivo,
+        p_nombre: nombre.trim(),
+        p_monto_objetivo: montoNum,
       };
 
-      const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/objetivo?id_objetivo=eq.${detalle.id_objetivo}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: this.props.SUPABASE_KEY,
-            Authorization: accessToken ? `Bearer ${accessToken}` : "",
-          },
-          body: JSON.stringify(body),
-        }
-      );
+      // Llamar RPC update_objetivo_by_id
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/update_objetivo_by_id`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: this.props.SUPABASE_KEY,
+          Authorization: accessToken ? `Bearer ${accessToken}` : "",
+        },
+        body: JSON.stringify(body),
+      });
 
       if (!res.ok) {
+        const data = await res.json().catch(() => null);
         this.setState({
-          message: "Error al actualizar la meta",
+          message: (data && data.message) || "Error al actualizar la meta",
           loading: false,
         });
         return;
@@ -332,10 +346,14 @@ export default class ObjetivoPanel extends React.Component {
       const headersAuth = accessToken
         ? { ...headersBase, Authorization: `Bearer ${accessToken}` }
         : headersBase;
-      const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/objetivo?id_objetivo=eq.${id}`,
-        { headers: headersAuth }
-      );
+
+      // Llamada RPC get_objetivo_by_id (param p_id)
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_objetivo_by_id`, {
+        method: "POST",
+        headers: headersAuth,
+        body: JSON.stringify({ p_id: id }),
+      });
+
       if (!res.ok) {
         this.setState({
           detalle: null,
@@ -354,6 +372,7 @@ export default class ObjetivoPanel extends React.Component {
         return;
       }
 
+      // Actualizar progreso/porcentaje usando los objetivos ya cargados
       const objetivosActualizados = this.calculateProgressForAll(
         this.state.objetivos
       );
@@ -401,39 +420,35 @@ export default class ObjetivoPanel extends React.Component {
     const { SUPABASE_URL, accessToken } = this.props;
 
     try {
+      const headersBase = {
+        "Content-Type": "application/json",
+        apikey: this.props.SUPABASE_KEY,
+      };
+      const headersAuth = accessToken
+        ? { ...headersBase, Authorization: `Bearer ${accessToken}` }
+        : headersBase;
+
       if (nuevoEstado === "en_progreso") {
         const metasActivas = objetivos.filter(
           (o) => o.estado === "en_progreso" && o.id_objetivo !== id
         );
 
+        // Pausar metas activas existentes vía RPC update_objetivo_estado_by_id
         for (const meta of metasActivas) {
-          await fetch(
-            `${SUPABASE_URL}/rest/v1/objetivo?id_objetivo=eq.${meta.id_objetivo}`,
-            {
-              method: "PATCH",
-              headers: {
-                "Content-Type": "application/json",
-                apikey: this.props.SUPABASE_KEY,
-                Authorization: accessToken ? `Bearer ${accessToken}` : "",
-              },
-              body: JSON.stringify({ estado: "en_pausa" }),
-            }
-          );
+          await fetch(`${SUPABASE_URL}/rest/v1/rpc/update_objetivo_estado_by_id`, {
+            method: "POST",
+            headers: headersAuth,
+            body: JSON.stringify({ p_id: meta.id_objetivo, p_estado: "en_pausa" }),
+          });
         }
       }
 
-      const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/objetivo?id_objetivo=eq.${id}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: this.props.SUPABASE_KEY,
-            Authorization: accessToken ? `Bearer ${accessToken}` : "",
-          },
-          body: JSON.stringify({ estado: nuevoEstado }),
-        }
-      );
+      // Actualizar estado de la meta objetivo (RPC)
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/update_objetivo_estado_by_id`, {
+        method: "POST",
+        headers: headersAuth,
+        body: JSON.stringify({ p_id: id, p_estado: nuevoEstado }),
+      });
 
       if (!res.ok) {
         this.setState({
@@ -444,23 +459,24 @@ export default class ObjetivoPanel extends React.Component {
       }
 
       if (nuevoEstado === "terminada") {
-        const siguienteMeta = objetivos
+        // Cuando se completa, activar la siguiente meta en pausa (si existe)
+        // Obtenemos la lista actualizada de objetivos desde la DB (RPC)
+        const listRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_objetivos_by_cuenta`, {
+          method: "POST",
+          headers: headersAuth,
+          body: JSON.stringify({ correo: this.state.cuenta.correo_cuenta }),
+        });
+        const listData = (await listRes.json().catch(() => [])) || [];
+        const siguienteMeta = listData
           .filter((o) => o.estado === "en_pausa")
           .sort((a, b) => a.id_objetivo - b.id_objetivo)[0];
 
         if (siguienteMeta) {
-          await fetch(
-            `${SUPABASE_URL}/rest/v1/objetivo?id_objetivo=eq.${siguienteMeta.id_objetivo}`,
-            {
-              method: "PATCH",
-              headers: {
-                "Content-Type": "application/json",
-                apikey: this.props.SUPABASE_KEY,
-                Authorization: accessToken ? `Bearer ${accessToken}` : "",
-              },
-              body: JSON.stringify({ estado: "en_progreso" }),
-            }
-          );
+          await fetch(`${SUPABASE_URL}/rest/v1/rpc/update_objetivo_estado_by_id`, {
+            method: "POST",
+            headers: headersAuth,
+            body: JSON.stringify({ p_id: siguienteMeta.id_objetivo, p_estado: "en_progreso" }),
+          });
           this.setState({
             successMessage: `¡Meta completada! "${siguienteMeta.nombre}" ahora está activa.`,
           });
@@ -503,47 +519,30 @@ export default class ObjetivoPanel extends React.Component {
         ? { ...headersBase, Authorization: `Bearer ${accessToken}` }
         : headersBase;
 
-      const urlConcepto = `${SUPABASE_URL}/rest/v1/movimiento_concepto?select=*,concepto:id_concepto(tipo)&correo_cuenta=eq.${encodeURIComponent(
-        cuenta.correo_cuenta
-      )}`;
-
-      const resConcepto = await fetch(urlConcepto, { headers: headersAuth });
-
-      const urlEspontaneo = `${SUPABASE_URL}/rest/v1/movimiento_espontaneo?select=*&correo_cuenta=eq.${encodeURIComponent(
-        cuenta.correo_cuenta
-      )}`;
-
-      const resEspontaneo = await fetch(urlEspontaneo, {
+      // Reutilizar RPC get_all_active_movements para obtener todos los movimientos y calcular balance
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_all_active_movements`, {
+        method: "POST",
         headers: headersAuth,
+        body: JSON.stringify({ correo: cuenta.correo_cuenta }),
       });
+
+      if (!res.ok) {
+        this.setState({ balanceTotal: 0 });
+        return;
+      }
+
+      const dataConceptoEsp = await res.json().catch(() => []);
 
       let totalIncome = 0;
       let totalExpense = 0;
 
-      if (resConcepto.ok) {
-        const dataConcepto = await resConcepto.json();
-        (dataConcepto || []).forEach((m) => {
-          const tipo = m.concepto?.tipo;
-          const monto = Number(m.monto || 0);
-          if (tipo === true) {
-            totalIncome += monto;
-          } else if (tipo === false) {
-            totalExpense += monto;
-          }
-        });
-      }
-
-      if (resEspontaneo.ok) {
-        const dataEspontaneo = await resEspontaneo.json();
-        (dataEspontaneo || []).forEach((m) => {
-          const monto = Number(m.monto || 0);
-          if (m.tipo === true) {
-            totalIncome += monto;
-          } else if (m.tipo === false) {
-            totalExpense += monto;
-          }
-        });
-      }
+      (dataConceptoEsp || []).forEach((m) => {
+        // m.tipo puede venir como booleano
+        const tipo = m.tipo;
+        const monto = Number(m.monto || 0);
+        if (tipo === true) totalIncome += monto;
+        else if (tipo === false) totalExpense += monto;
+      });
 
       const balance = totalIncome - totalExpense;
       this.setState({ balanceTotal: Math.max(0, balance) });
