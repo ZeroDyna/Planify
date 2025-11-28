@@ -20,33 +20,18 @@ export default class LoginApp extends Component {
       loading: false,
       user: null,
 
-      // MK-003 Confirmación de Email y MK-004 Account Created
-      showEmailConfirmation: false,
+      // MK-004 Account Created
       showAccountConfirmed: false,
 
       // MK-005 Home/Dashboard - Navegación por pestañas
       activeTab: "balance",
 
-      // MK-010 Change Password - Send Code
-      showForgotPassword: false,
-      showOtpVerification: false,
-      showResetPassword: false,
-      showPasswordResetSuccess: false,
-      otpCode: "",
-      recoveryEmail: "",
-
-      // MK-012 Change Password
+      // MK-012 Change Password - Cambio directo de contraseña (sin OTP)
+      showChangePassword: false,
+      showPasswordChangeSuccess: false,
+      changePasswordEmail: "",
       newPassword: "",
       confirmNewPassword: "",
-      accessToken: null,
-
-      // MK-008 Goals - Campos del formulario de objetivos
-      goal_correo_cuenta: "",
-      goal_fecha_objetivo: "",
-      goal_monto: "",
-      goal_tipo: true,
-      goal_estado: "",
-      creatingGoal: false,
     };
 
     // Configuración de Supabase para todas las pantallas
@@ -58,102 +43,78 @@ export default class LoginApp extends Component {
   // FP-07: MK-004 Account Created - Verificación de cuenta confirmada
   componentDidMount() {
     const params = new URLSearchParams(window.location.search);
-    const type = params.get("type");
     const confirmed = params.get("confirmed");
-    const hash = window.location.hash;
 
-    if (
-      type === "signup" ||
-      confirmed === "true" ||
-      hash.includes("type=signup")
-    ) {
+    if (confirmed === "true") {
       this.setState({ showAccountConfirmed: true });
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }
 
-  // FP-08: MK-002 Registro de Usuario - Crear usuario y cuenta en tablas
-  async signupToTables({ correo, nombre_usuario, password }) {
+  // FUNCIÓN HELPER: Llamar a función RPC de Supabase
+  async callSupabaseFunction(functionName, params) {
     const headers = {
       "Content-Type": "application/json",
       apikey: this.SUPABASE_KEY,
     };
 
-    // Insertar en usuario
-    const usuarioBody = {
-      correo,
-      nombre_usuario,
-      contrasena: password,
-    };
+    const response = await fetch(
+      `${this.SUPABASE_URL}/rest/v1/rpc/${functionName}`,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify(params),
+      }
+    );
 
-    const resUser = await fetch(`${this.SUPABASE_URL}/rest/v1/usuario`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(usuarioBody),
-    });
-
-    // Si el usuario ya existe (409), lo tratamos como OK y seguimos para intentar login.
-    if (!resUser.ok && resUser.status !== 409) {
-      const text = await resUser.text().catch(() => null);
-      throw new Error(`Error al crear usuario: ${resUser.status} ${text}`);
+    if (!response.ok) {
+      const text = await response.text().catch(() => null);
+      throw new Error(`Error en ${functionName}: ${response.status} ${text}`);
     }
 
-    // Crear/asegurar cuenta asociada
-    const cuentaBody = {
-      correo_cuenta: correo,
-      nombre_cuenta: nombre_usuario || correo,
-      correo_usuario: correo,
-      fecha_creacion: new Date().toISOString().slice(0, 10),
-      activo: true,
-    };
-
-    const resCuenta = await fetch(`${this.SUPABASE_URL}/rest/v1/cuenta`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(cuentaBody),
-    });
-
-    // Si falla por conflicto ya existente (409), no es crítico
-    if (!resCuenta.ok && resCuenta.status !== 409) {
-      const text = await resCuenta.text().catch(() => null);
-      throw new Error(`Error al crear cuenta: ${resCuenta.status} ${text}`);
-    }
-
-    return true;
+    return await response.json();
   }
 
-  // FP-09: MK-001 Login - Validar credenciales del usuario
-  async loginFromTables({ correo, password }) {
-    const headers = {
-      "Content-Type": "application/json",
-      apikey: this.SUPABASE_KEY,
-    };
+  // FP-08: MK-002 Registro de Usuario - Crear usuario y cuenta usando función signup_user_and_account
+  async signupToTables({ correo, nombre_usuario, password }) {
+    try {
+      const result = await this.callSupabaseFunction("signup_user_and_account", {
+        p_correo: correo,
+        p_nombre_usuario: nombre_usuario,
+        p_password: password,
+      });
 
-    // Hacer GET filtrando por correo y contrasena
-    const url = `${
-      this.SUPABASE_URL
-    }/rest/v1/usuario?correo=eq.${encodeURIComponent(
-      correo
-    )}&contrasena=eq.${encodeURIComponent(
-      password
-    )}&select=correo,nombre_usuario`;
-    const res = await fetch(url, { headers });
+      if (!result.success) {
+        throw new Error(result.message || "Error al crear usuario");
+      }
 
-    if (!res.ok) {
-      const text = await res.text().catch(() => null);
-      throw new Error(`Error al consultar usuario: ${res.status} ${text}`);
+      return true;
+    } catch (error) {
+      throw error;
     }
+  }
 
-    const data = await res.json();
-    if (!Array.isArray(data) || data.length === 0) return null;
+  // FP-09: MK-001 Login - Validar credenciales usando función login_user_validate
+  async loginFromTables({ correo, password }) {
+    try {
+      const result = await this.callSupabaseFunction("login_user_validate", {
+        p_correo: correo,
+        p_password: password,
+      });
 
-    const row = data[0];
-    // Normalizamos la forma del usuario
-    return {
-      email: row.correo || row.email || row.correo_usuario || row.user_email,
-      user_metadata: { username: row.nombre_usuario || row.nombre || "" },
-      _raw: row,
-    };
+      if (!result.success || !result.user) {
+        return null;
+      }
+
+      // Retornar usuario en formato esperado
+      return {
+        email: result.user.email,
+        user_metadata: result.user.user_metadata,
+        _raw: result.user,
+      };
+    } catch (error) {
+      throw error;
+    }
   }
 
   // FP-10: MK-001 Login y MK-002 Registro - Manejar autenticación
@@ -188,10 +149,10 @@ export default class LoginApp extends Component {
       }
     }
 
-    // Gestor de registro/login usando tablas usuario/cuenta
+    // Gestor de registro/login usando funciones de Supabase
     try {
       if (isSignUp) {
-        // MK-002 Registro - crear usuario y cuenta en tablas
+        // MK-002 Registro - crear usuario y cuenta
         try {
           await this.signupToTables({
             // FP-08
@@ -224,8 +185,7 @@ export default class LoginApp extends Component {
 
         if (!user) {
           this.setState({
-            message:
-              "Registro creado pero no se pudo iniciar sesión (credenciales)",
+            message: "Error: correo ya registrado",
             loading: false,
           });
           return;
@@ -234,7 +194,6 @@ export default class LoginApp extends Component {
         // MK-005 Home/Dashboard - Navegación exitosa después del login
         this.setState({
           user,
-          accessToken: "",
           message: "Registro y sesión correctos",
           loading: false,
           isSignUp: false,
@@ -273,7 +232,6 @@ export default class LoginApp extends Component {
         // MK-005 Home/Dashboard - Navegación exitosa
         this.setState({
           user,
-          accessToken: "",
           message: "Inicio de sesión correcto",
           loading: false,
           email: "",
@@ -289,126 +247,18 @@ export default class LoginApp extends Component {
     }
   };
 
-  // FP-11: MK-010 Change Password - Send Code - Enviar código de recuperación
-  handleForgotPassword = async () => {
+  // FP-11: MK-012 Change Password - Cambiar contraseña directamente (sin OTP)
+  handleChangePassword = async () => {
     this.setState({ loading: true, message: "" });
-    const { recoveryEmail } = this.state;
+    const { changePasswordEmail, newPassword, confirmNewPassword } = this.state;
 
-    if (!recoveryEmail || !recoveryEmail.includes("@")) {
+    if (!changePasswordEmail || !changePasswordEmail.includes("@")) {
       this.setState({
         message: "Por favor, ingresa un correo electrónico válido.",
         loading: false,
       });
       return;
     }
-
-    try {
-      // MK-010-E Email Not Registered - Verificar si el email existe
-      const checkEmailUrl = `${this.SUPABASE_URL}/functions/v1/check-email-exists`;
-      const checkResponse = await fetch(checkEmailUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: this.SUPABASE_KEY,
-          Authorization: `Bearer ${this.SUPABASE_KEY}`,
-        },
-        body: JSON.stringify({ email: recoveryEmail }),
-      });
-
-      const checkData = await checkResponse.json();
-
-      if (!checkData.exists) {
-        this.setState({
-          message:
-            "Este correo electrónico no está registrado en nuestro sistema.",
-          loading: false,
-        });
-        return;
-      }
-
-      // MK-010 Change Password - Send Code - Enviar código de recuperación
-      const recoverUrl = `${this.SUPABASE_URL}/auth/v1/recover`;
-      const recoverResponse = await fetch(recoverUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: this.SUPABASE_KEY,
-        },
-        body: JSON.stringify({
-          email: recoveryEmail,
-        }),
-      });
-
-      if (recoverResponse.ok) {
-        // MK-011 Enter Verification Code - Navegación a verificación
-        this.setState({
-          showForgotPassword: false,
-          showOtpVerification: true,
-          message: "",
-        });
-      } else {
-        this.setState({
-          message: "Error al enviar el código. Inténtalo de nuevo.",
-        });
-      }
-    } catch (error) {
-      console.error("Error en forgot password:", error);
-      this.setState({ message: "Error de conexión. Inténtalo de nuevo." });
-    } finally {
-      this.setState({ loading: false });
-    }
-  };
-
-  // FP-12: MK-011 Enter Verification Code - Verificar código OTP
-  handleVerifyOtp = async () => {
-    this.setState({ loading: true, message: "" });
-    const { recoveryEmail, otpCode } = this.state;
-
-    try {
-      const url = `${this.SUPABASE_URL}/auth/v1/verify`;
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: this.SUPABASE_KEY,
-        },
-        body: JSON.stringify({
-          email: recoveryEmail,
-          token: otpCode,
-          type: "recovery",
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.access_token) {
-        // MK-012 Change Password - Navegación exitosa con token
-        this.setState({
-          showOtpVerification: false,
-          showResetPassword: true,
-          message: "",
-          accessToken: data.access_token,
-        });
-      } else {
-        // MK-011-E Incorrect Code - Mensaje de error
-        this.setState({
-          message:
-            "El código ingresado es incorrecto. Por favor, verifica e intenta de nuevo.",
-        });
-      }
-    } catch (error) {
-      this.setState({
-        message: "Error al verificar el código. Inténtalo de nuevo.",
-      });
-    } finally {
-      this.setState({ loading: false });
-    }
-  };
-
-  // FP-13: MK-012 Change Password - Actualizar contraseña
-  handleResetPassword = async () => {
-    this.setState({ loading: true, message: "" });
-    const { newPassword, confirmNewPassword, accessToken } = this.state;
 
     // MK-012-E Passwords Don't Match - Validación
     if (newPassword !== confirmNewPassword) {
@@ -428,107 +278,49 @@ export default class LoginApp extends Component {
     }
 
     try {
-      const url = `${this.SUPABASE_URL}/auth/v1/user`;
-      const response = await fetch(url, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: this.SUPABASE_KEY,
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ password: newPassword }),
-      });
+      // Verificar si el email existe usando función check_email_registered
+      const checkResult = await this.callSupabaseFunction(
+        "check_email_registered",
+        {
+          p_email: changePasswordEmail,
+        }
+      );
 
-      if (response.ok) {
-        // MK-013 Password Changed Successfully - Navegación exitosa
+      if (!checkResult.exists) {
         this.setState({
-          showResetPassword: false,
-          showPasswordResetSuccess: true,
-          newPassword: "",
-          confirmNewPassword: "",
-          otpCode: "",
-          recoveryEmail: "",
-          accessToken: null,
-        });
-      } else {
-        this.setState({
-          message:
-            "Error al cambiar la contraseña. El código puede haber expirado.",
-        });
-      }
-    } catch (error) {
-      this.setState({
-        message: "Error al cambiar la contraseña. Inténtalo de nuevo.",
-      });
-    } finally {
-      this.setState({ loading: false });
-    }
-  };
-
-  // FP-14: MK-008 Goals - Crear objetivo
-  createObjetivo = async () => {
-    this.setState({ creatingGoal: true, message: "" });
-    const {
-      goal_correo_cuenta,
-      goal_fecha_objetivo,
-      goal_monto,
-      goal_tipo,
-      goal_estado,
-      accessToken,
-    } = this.state;
-
-    if (!accessToken) {
-      this.setState({
-        message: "Sesión inválida. Inicia sesión nuevamente.",
-        creatingGoal: false,
-      });
-      return;
-    }
-
-    const url = `${this.SUPABASE_URL}/rest/v1/objetivo`;
-    const body = {
-      correo_cuenta: goal_correo_cuenta,
-      fecha_objetivo: goal_fecha_objetivo,
-      monto_objetivo: goal_monto,
-      tipo: goal_tipo,
-      estado: goal_estado,
-    };
-
-    try {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: this.SUPABASE_KEY,
-          Authorization: `Bearer ${accessToken}`,
-          Prefer: "return=representation",
-        },
-        body: JSON.stringify(body),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        console.error("Error creando objetivo", res.status, data);
-        this.setState({
-          message: data?.message || JSON.stringify(data),
-          creatingGoal: false,
+          message: "El correo no está registrado",
+          loading: false,
         });
         return;
       }
 
-      this.setState({
-        message: "Objetivo creado",
-        creatingGoal: false,
-        goal_correo_cuenta: "",
-        goal_fecha_objetivo: "",
-        goal_monto: "",
-        goal_estado: "",
+      // Actualizar contraseña usando función update_user_password
+      const result = await this.callSupabaseFunction("update_user_password", {
+        p_correo: changePasswordEmail,
+        p_nueva_contrasena: newPassword,
       });
+
+      if (result.success) {
+        // MK-013 Password Changed Successfully - Navegación exitosa
+        this.setState({
+          showChangePassword: false,
+          showPasswordChangeSuccess: true,
+          changePasswordEmail: "",
+          newPassword: "",
+          confirmNewPassword: "",
+          loading: false,
+        });
+      } else {
+        this.setState({
+          message: result.message || "Error al cambiar la contraseña",
+          loading: false,
+        });
+      }
     } catch (error) {
-      console.error("Error creando objetivo", error);
+      console.error("Error al cambiar contraseña:", error);
       this.setState({
-        message: "Error de conexión al crear objetivo",
-        creatingGoal: false,
+        message: "Error de conexión. Inténtalo de nuevo.",
+        loading: false,
       });
     }
   };
@@ -539,7 +331,6 @@ export default class LoginApp extends Component {
       user: null,
       message: "Sesión cerrada",
       activeTab: "balance",
-      accessToken: null,
     });
   };
 
@@ -551,32 +342,26 @@ export default class LoginApp extends Component {
       password: "",
       confirmPassword: "",
       username: "",
-      showEmailConfirmation: false,
     }));
   };
 
   // FP-17: Navegación - Regresar al login desde cualquier pantalla
   handleBackToLogin = () => {
     this.setState({
-      showEmailConfirmation: false,
       showAccountConfirmed: false,
-      showForgotPassword: false,
-      showOtpVerification: false,
-      showResetPassword: false,
-      showPasswordResetSuccess: false,
+      showChangePassword: false,
+      showPasswordChangeSuccess: false,
       isSignUp: false,
       message: "",
-      recoveryEmail: "",
-      otpCode: "",
+      changePasswordEmail: "",
       newPassword: "",
       confirmNewPassword: "",
-      accessToken: null,
     });
   };
 
-  // FP-18: MK-010 Change Password - Navegar a recuperación de contraseña
-  handleGoToForgotPassword = () => {
-    this.setState({ showForgotPassword: true, message: "" });
+  // FP-18: MK-012 Change Password - Navegar a cambio de contraseña
+  handleGoToChangePassword = () => {
+    this.setState({ showChangePassword: true, message: "" });
   };
 
   // Componente auxiliar para íconos
@@ -597,8 +382,7 @@ export default class LoginApp extends Component {
             {this.renderIcon("✅")}
             <h2 className="welcome-title">¡Cuenta creada exitosamente!</h2>
             <p className="user-email" style={{ marginBottom: "1.5rem" }}>
-              Tu correo ha sido verificado correctamente. Ya puedes iniciar
-              sesión con tu cuenta.
+              Tu cuenta ha sido creada correctamente. Ya puedes iniciar sesión.
             </p>
             <button
               onClick={this.handleBackToLogin} // FP-17
@@ -612,40 +396,18 @@ export default class LoginApp extends Component {
     );
   }
 
-  // FP-20: MK-003 Confirmación de Email - Renderizar pantalla de verificación
-  renderEmailConfirmation() {
-    return (
-      <div className="app-container">
-        <div className="login-card">
-          <div className="text-center">
-            {this.renderIcon("✉️")}
-            <h2 className="welcome-title">¡Verifica tu correo!</h2>
-            <p className="user-email" style={{ marginBottom: "1rem" }}>
-              Hemos enviado un enlace de verificación a tu correo electrónico.
-            </p>
-            <p className="subtitle" style={{ marginBottom: "1.5rem" }}>
-              Por favor, haz clic en el enlace del correo para confirmar tu
-              registro.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // FP-21: MK-010 Change Password - Send Code - Renderizar recuperación
-  renderForgotPassword() {
-    const { recoveryEmail, message, loading } = this.state;
+  // FP-21: MK-012 Change Password - Renderizar cambio de contraseña
+  renderChangePassword() {
+    const { changePasswordEmail, newPassword, confirmNewPassword, message, loading } = this.state;
 
     return (
       <div className="app-container">
         <div className="login-card">
           <div className="header-section text-center">
-            {this.renderIcon("🔓")}
-            <h1 className="title">Recuperar Contraseña</h1>
+            {this.renderIcon("🔐")}
+            <h1 className="title">Cambiar Contraseña</h1>
             <p className="subtitle">
-              Ingresa tu correo electrónico para recibir un código de
-              recuperación
+              Ingresa tu correo y tu nueva contraseña
             </p>
           </div>
 
@@ -654,109 +416,15 @@ export default class LoginApp extends Component {
               <label className="form-label">Correo Electrónico</label>
               <input
                 type="email"
-                value={recoveryEmail}
+                value={changePasswordEmail}
                 onChange={(e) =>
-                  this.setState({ recoveryEmail: e.target.value })
+                  this.setState({ changePasswordEmail: e.target.value })
                 }
                 className="form-input"
                 placeholder="tu@email.com"
               />
             </div>
 
-            {message && <div className="message message-error">{message}</div>}
-
-            <button
-              onClick={this.handleForgotPassword} // FP-11
-              disabled={loading}
-              className="btn btn-primary"
-            >
-              {loading ? "Enviando..." : "Enviar código"}
-            </button>
-          </div>
-
-          <div className="toggle-section">
-            <button onClick={this.handleBackToLogin} className="btn-link">
-              {" "}
-              {/* FP-17 */}
-              Volver al inicio de sesión
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // FP-22: MK-011 Enter Verification Code - Renderizar verificación OTP
-  renderOtpVerification() {
-    const { otpCode, message, loading, recoveryEmail } = this.state;
-
-    return (
-      <div className="app-container">
-        <div className="login-card">
-          <div className="header-section text-center">
-            {this.renderIcon("✉️")}
-            <h1 className="title">Verificar Código</h1>
-            <p className="subtitle">Hemos enviado un código de 6 dígitos a</p>
-            <p className="user-email" style={{ marginBottom: "1rem" }}>
-              {recoveryEmail}
-            </p>
-          </div>
-
-          <div className="form-section">
-            <div className="form-group">
-              <label className="form-label">Código de Verificación</label>
-              <input
-                type="text"
-                value={otpCode}
-                onChange={(e) => this.setState({ otpCode: e.target.value })}
-                className="form-input"
-                placeholder="000000"
-                maxLength={6}
-                style={{
-                  textAlign: "center",
-                  fontSize: "1.5rem",
-                  letterSpacing: "0.5rem",
-                }}
-              />
-            </div>
-
-            {message && <div className="message message-error">{message}</div>}
-
-            <button
-              onClick={this.handleVerifyOtp} // FP-12
-              disabled={loading}
-              className="btn btn-primary"
-            >
-              {loading ? "Verificando..." : "Verificar código"}
-            </button>
-          </div>
-
-          <div className="toggle-section">
-            <button onClick={this.handleBackToLogin} className="btn-link">
-              {" "}
-              {/* FP-17 */}
-              Volver al inicio de sesión
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // FP-23: MK-012 Change Password - Renderizar formulario de nueva contraseña
-  renderResetPassword() {
-    const { newPassword, confirmNewPassword, message, loading } = this.state;
-
-    return (
-      <div className="app-container">
-        <div className="login-card">
-          <div className="header-section text-center">
-            {this.renderIcon("🔓")}
-            <h1 className="title">Nueva Contraseña</h1>
-            <p className="subtitle">Ingresa tu nueva contraseña</p>
-          </div>
-
-          <div className="form-section">
             <div className="form-group">
               <label className="form-label">Nueva Contraseña</label>
               <input
@@ -784,7 +452,7 @@ export default class LoginApp extends Component {
             {message && <div className="message message-error">{message}</div>}
 
             <button
-              onClick={this.handleResetPassword} // FP-13
+              onClick={this.handleChangePassword} // FP-11
               disabled={loading}
               className="btn btn-primary"
             >
@@ -805,7 +473,7 @@ export default class LoginApp extends Component {
   }
 
   // FP-24: MK-013 Password Changed Successfully - Renderizar éxito
-  renderPasswordResetSuccess() {
+  renderPasswordChangeSuccess() {
     return (
       <div className="app-container">
         <div className="login-card">
@@ -832,21 +500,7 @@ export default class LoginApp extends Component {
 
   // FP-25: MK-005 Home/Dashboard - Renderizar dashboard principal
   renderDashboard() {
-    const {
-      user,
-      activeTab,
-      goal_correo_cuenta,
-      goal_fecha_objetivo,
-      goal_monto,
-      goal_tipo,
-      goal_estado,
-      creatingGoal,
-    } = this.state;
-
-    const displayName =
-      (user && (user.user_metadata?.username || user.nombre_usuario)) ||
-      (user && user.email) ||
-      "";
+    const { user, activeTab } = this.state;
 
     return (
       <div className="dashboard-container">
@@ -900,7 +554,6 @@ export default class LoginApp extends Component {
               <Balance
                 SUPABASE_URL={this.SUPABASE_URL}
                 SUPABASE_KEY={this.SUPABASE_KEY}
-                accessToken={this.state.accessToken}
                 user={this.state.user}
               />
             </div>
@@ -911,7 +564,6 @@ export default class LoginApp extends Component {
               <DailyInput
                 SUPABASE_URL={this.SUPABASE_URL}
                 SUPABASE_KEY={this.SUPABASE_KEY}
-                accessToken={this.state.accessToken}
                 user={this.state.user}
               />
             </div>
@@ -921,7 +573,6 @@ export default class LoginApp extends Component {
               <ObjetivoPanel
                 SUPABASE_URL={this.SUPABASE_URL}
                 SUPABASE_KEY={this.SUPABASE_KEY}
-                accessToken={this.state.accessToken}
                 user={this.state.user}
               />
             </div>
@@ -931,7 +582,6 @@ export default class LoginApp extends Component {
               <ConceptsPanel
                 SUPABASE_URL={this.SUPABASE_URL}
                 SUPABASE_KEY={this.SUPABASE_KEY}
-                accessToken={this.state.accessToken}
                 user={this.state.user}
               />
             </div>
@@ -941,9 +591,8 @@ export default class LoginApp extends Component {
               <AccountPanel
                 SUPABASE_URL={this.SUPABASE_URL}
                 SUPABASE_KEY={this.SUPABASE_KEY}
-                accessToken={this.state.accessToken}
                 user={this.state.user}
-                onOpenChangePassword={this.handleGoToForgotPassword} // FP-18
+                onOpenChangePassword={this.handleGoToChangePassword} // FP-18
               />
             </div>
           )}
@@ -1031,7 +680,7 @@ export default class LoginApp extends Component {
             {message && (
               <div
                 className={`message ${
-                  message.includes("exitoso") || message.includes("creada")
+                  message.includes("exitoso") || message.includes("creada") || message.includes("correctos")
                     ? "message-success"
                     : "message-error"
                 }`}
@@ -1056,7 +705,7 @@ export default class LoginApp extends Component {
           {!isSignUp && (
             <div className="forgot-password-section">
               <button
-                onClick={this.handleGoToForgotPassword} // FP-18
+                onClick={this.handleGoToChangePassword} // FP-18
                 className="btn-link"
               >
                 ¿Olvidaste tu contraseña?
@@ -1082,20 +731,14 @@ export default class LoginApp extends Component {
   render() {
     const {
       showAccountConfirmed,
-      showEmailConfirmation,
-      showForgotPassword,
-      showOtpVerification,
-      showResetPassword,
-      showPasswordResetSuccess,
+      showChangePassword,
+      showPasswordChangeSuccess,
       user,
     } = this.state;
 
     if (showAccountConfirmed) return this.renderAccountConfirmed(); // FP-19
-    if (showEmailConfirmation) return this.renderEmailConfirmation(); // FP-20
-    if (showPasswordResetSuccess) return this.renderPasswordResetSuccess(); // FP-24
-    if (showResetPassword) return this.renderResetPassword(); // FP-23
-    if (showOtpVerification) return this.renderOtpVerification(); // FP-22
-    if (showForgotPassword) return this.renderForgotPassword(); // FP-21
+    if (showPasswordChangeSuccess) return this.renderPasswordChangeSuccess(); // FP-24
+    if (showChangePassword) return this.renderChangePassword(); // FP-21
     if (user) return this.renderDashboard(); // FP-25
     return this.renderLoginForm(); // FP-26
   }
