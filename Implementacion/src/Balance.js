@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 
 /**
  * Balance (MK-005) - Vista para consultar balances y generar reportes por periodo.
- * ACTUALIZADO: Usa funciones RPC en Supabase en lugar de construir queries REST/SQL en el cliente.
+ * Usa funciones RPC en Supabase
  *
  * Props:
  * - SUPABASE_URL
@@ -10,7 +10,6 @@ import React, { useEffect, useState } from "react";
  * - accessToken (opcional)
  * - user (opcional) - objeto user (se usa su email para filtrar)
  *
- * Funciones importantes documentadas con FP-51 .. FP-57 (comentarios en español).
  */
 
 export default function Balance({

@@ -78,14 +78,14 @@ export default class LoginApp extends Component {
   // FP-08: MK-002 Registro de Usuario - Crear usuario y cuenta usando función signup_user_and_account
   async signupToTables({ correo, nombre_usuario, password }) {
     try {
-      const result = await this.callSupabaseFunction("signup_user_and_account", {
+      const success = await this.callSupabaseFunction("signup_user_and_account", {
         p_correo: correo,
         p_nombre_usuario: nombre_usuario,
         p_password: password,
       });
 
-      if (!result.success) {
-        throw new Error(result.message || "Error al crear usuario");
+      if (!success) {
+        throw new Error("El correo ya está registrado");
       }
 
       return true;
@@ -97,20 +97,36 @@ export default class LoginApp extends Component {
   // FP-09: MK-001 Login - Validar credenciales usando función login_user_validate
   async loginFromTables({ correo, password }) {
     try {
-      const result = await this.callSupabaseFunction("login_user_validate", {
+      // Primero validar credenciales
+      const isValid = await this.callSupabaseFunction("login_user_validate", {
         p_correo: correo,
         p_password: password,
       });
 
-      if (!result.success || !result.user) {
+      if (!isValid) {
         return null;
       }
 
+      // Si es válido, obtener datos del usuario
+      const userData = await this.callSupabaseFunction("get_user_data", {
+        p_correo: correo,
+      });
+
+      if (!userData || userData.length === 0) {
+        return null;
+      }
+
+      const user = userData[0];
+
       // Retornar usuario en formato esperado
       return {
-        email: result.user.email,
-        user_metadata: result.user.user_metadata,
-        _raw: result.user,
+        email: user.correo,
+        user_metadata: {
+          nombre_usuario: user.nombre_usuario,
+          ubicacion: user.ubicacion,
+          lugar_trabajo: user.lugar_trabajo
+        },
+        _raw: user,
       };
     } catch (error) {
       throw error;
@@ -185,7 +201,7 @@ export default class LoginApp extends Component {
 
         if (!user) {
           this.setState({
-            message: "Error: correo ya registrado",
+            message: "Error al iniciar sesión",
             loading: false,
           });
           return;
@@ -279,14 +295,14 @@ export default class LoginApp extends Component {
 
     try {
       // Verificar si el email existe usando función check_email_registered
-      const checkResult = await this.callSupabaseFunction(
+      const exists = await this.callSupabaseFunction(
         "check_email_registered",
         {
           p_email: changePasswordEmail,
         }
       );
 
-      if (!checkResult.exists) {
+      if (!exists) {
         this.setState({
           message: "El correo no está registrado",
           loading: false,
@@ -295,12 +311,12 @@ export default class LoginApp extends Component {
       }
 
       // Actualizar contraseña usando función update_user_password
-      const result = await this.callSupabaseFunction("update_user_password", {
+      const success = await this.callSupabaseFunction("update_user_password", {
         p_correo: changePasswordEmail,
         p_nueva_contrasena: newPassword,
       });
 
-      if (result.success) {
+      if (success) {
         // MK-013 Password Changed Successfully - Navegación exitosa
         this.setState({
           showChangePassword: false,
@@ -312,7 +328,7 @@ export default class LoginApp extends Component {
         });
       } else {
         this.setState({
-          message: result.message || "Error al cambiar la contraseña",
+          message: "Error al cambiar la contraseña",
           loading: false,
         });
       }
@@ -404,7 +420,7 @@ export default class LoginApp extends Component {
       <div className="app-container">
         <div className="login-card">
           <div className="header-section text-center">
-            {this.renderIcon("🔐")}
+            {this.renderIcon("🔒")}
             <h1 className="title">Cambiar Contraseña</h1>
             <p className="subtitle">
               Ingresa tu correo y tu nueva contraseña

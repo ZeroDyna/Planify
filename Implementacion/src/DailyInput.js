@@ -289,11 +289,11 @@ export default function DailyInput({
       if (movement.useConcepto) {
         // Usar RPC para insertar movimiento_concepto
         const body = {
-          correo_cuenta: cuenta.correo_cuenta,
-          contador: 1,
-          fecha_operacion: fecha,
-          monto: Number(movement.monto),
-          id_concepto: Number(movement.conceptoId),
+          p_correo_cuenta: cuenta.correo_cuenta,
+          p_contador: 1,
+          p_fecha_operacion: fecha,
+          p_monto: Number(movement.monto),
+          p_id_concepto: Number(movement.conceptoId),
         };
 
         console.log("RPC insert_movimiento_concepto:", body);
@@ -309,12 +309,12 @@ export default function DailyInput({
       } else {
         // Usar RPC para insertar movimiento_espontaneo
         const body = {
-          correo_cuenta: cuenta.correo_cuenta,
-          contador: 1,
-          fecha_operacion: fecha,
-          motivo: movement.motivo.trim(),
-          tipo: movement.tipo,
-          monto: Number(movement.monto),
+          p_correo_cuenta: cuenta.correo_cuenta,
+          p_contador: 1,
+          p_fecha_operacion: fecha,
+          p_motivo: movement.motivo.trim(),
+          p_tipo: movement.tipo,
+          p_monto: Number(movement.monto),
         };
 
         console.log("RPC insert_movimiento_espontaneo:", body);
