@@ -1,70 +1,83 @@
-# Getting Started with Create React App
+# Daily Input App - Registro de Finanzas Personales
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Bienvenido al proyecto **Daily Input App**. Esta es una aplicación sencilla para registrar tus ingresos y gastos diarios, utilizando **React** y una base de datos **Supabase** para gestionar los movimientos.
 
-## Available Scripts
+Este documento te guiará paso a paso para que puedas descargar y ejecutar la aplicación en tu propio computador, incluso si nunca lo has hecho antes.
 
-In the project directory, you can run:
+---
 
-### `npm start`
+## 1. Requisitos Indispensables (Lo que necesitas)
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+Para que esta aplicación funcione, necesitarás tener instaladas dos cosas en tu computadora:
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+### A. Node.js (El motor de JavaScript)
 
-### `npm test`
+Node.js es el programa que permite a tu computadora ejecutar el código de React.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+* **¿Cómo instalarlo?**
+    1.  Ve a la página oficial de Node.js: [https://nodejs.org/](https://nodejs.org/)
+    2.  Descarga e instala la versión **LTS (Recomendada para la mayoría de usuarios)**.
+    3.  Sigue las instrucciones del instalador (normalmente basta con presionar "Siguiente" o "Next" varias veces).
 
-### `npm run build`
+### B. Supabase (La Base de Datos en la Nube)
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+Supabase es donde se guardarán tus cuentas, movimientos y conceptos.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+* **¿Qué necesitas de Supabase?**
+    1.  Una **cuenta** gratuita en [Supabase.com](https://supabase.com/).
+    2.  Crear un nuevo **Proyecto**.
+    3.  Obtener dos datos clave de tu proyecto (los encontrarás en la sección **Settings > API**):
+        * `SUPABASE_URL`: La URL de tu API (ej: `https://abcd1234.supabase.co`).
+        * `SUPABASE_KEY`: La clave pública (`anon key`).
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+---
 
-### `npm run eject`
+## 🛠️ 2. Configuración de la Base de Datos (SQL)
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+Antes de ejecutar el código, debes asegurarte de que la estructura de tu base de datos en Supabase sea la correcta, incluyendo las tablas y las funciones que el código utiliza
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### A. Crear las Tablas
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+Tu aplicación utiliza las siguientes tablas (como se ve en el esquema de la imagen):
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+* `usuario`
+* `cuenta`
+* `concepto`
+* `objetivo`
+* `movimiento_concepto`
+* `movimiento_espontaneo`
 
-## Learn More
+Debes crearlas manualmente siguiendo la estructura del esquema
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+### B. Funciones RPC (Remote Procedure Call)
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+La aplicación hace llamadas a funciones especiales en Supabase (llamadas RPC). **Estas funciones deben estar creadas en la base de datos**
 
-### Code Splitting
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## 3. Ejecución del Proyecto
 
-### Analyzing the Bundle Size
+Sigue estos pasos:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+### A. Descargar el Código (Clonar)
 
-### Making a Progressive Web App
+1.  Abre la aplicación de **Terminal** (**PowerShell** en Windows / **Terminal** en Mac)
+2.  Navega hasta la carpeta donde quieres guardar el proyecto (ejemplo: `cd ~/Documentos/proyectos`).
+3.  Copia la URL de tu repositorio en GitHub y ejecuta el comando para clonar:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+    ```bash
+    git clone https://github.com/ZeroDyna/Planify.git
+    ```
 
-### Advanced Configuration
+4.  Entra a la carpeta del proyecto recién descargado:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+    ```bash
+    cd Planify
+    ```
 
-### Deployment
+### B. Instalar Dependencias
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+Los proyectos de React usan librerías externas. Este comando las descarga e instala automáticamente:
 
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+```bash
+npm install
