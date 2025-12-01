@@ -1,4 +1,4 @@
-# Aplicación PLanify - Registro de Finanzas
+# Aplicación Planify - Registro de Finanzas
 
 Bienvenido al proyecto **Planify**. Esta es una aplicación sencilla para registrar tus ingresos y gastos diarios, utilizando **React** y una base de datos **Supabase** para gestionar los movimientos.
 
