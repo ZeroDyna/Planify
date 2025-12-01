@@ -4,16 +4,6 @@ import React, { useEffect, useState } from "react";
  * DailyInput (MK-009) - Vista para registrar ingresos y gastos diarios.
  * Usa movimiento_concepto cuando se selecciona un concepto
  * Usa movimiento_espontaneo cuando se ingresa un motivo libre
- *
- * ACTUALIZACIÓN: llamadas a BD reemplazadas por RPC en Supabase.
- * Se reutilizan funciones RPC creadas para Balance (get_cuenta_by_email, get_movements_range, get_all_active_movements)
- * y se agregan RPC para conceptos e inserciones/borrados:
- * - get_conceptos_by_cuenta(correo)
- * - insert_movimiento_concepto(...)
- * - insert_movimiento_espontaneo(...)
- * - delete_movimiento_concepto_by_id(id)
- * - delete_movimiento_espontaneo_by_id(id)
- *
  * Props:
  * - SUPABASE_URL
  * - SUPABASE_KEY

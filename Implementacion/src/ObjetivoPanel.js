@@ -5,27 +5,41 @@ import { Doughnut } from "react-chartjs-2";
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 export default class ObjetivoPanel extends React.Component {
+  /* --------------------------------------------------------------------------
+   * FP-28: constructor
+   * Inicializa el estado del componente.
+   * ----------------------------------------------------------------------- */
   constructor(props) {
     super(props);
     this.state = {
+      // Información de la cuenta del usuario
       cuenta: null,
+      // Lista de todos los objetivos de la cuenta
       objetivos: [],
+      // ID del objetivo actualmente seleccionado
       selectedId: null,
+      // Detalle completo del objetivo seleccionado
       detalle: null,
-      loading: false,
-      loadingList: false,
+      // Estados de carga para UI y acciones
+      loading: false, // Carga para el detalle/acciones específicas
+      loadingList: false, // Carga para la lista de objetivos
+      // Mensajes de feedback
       message: "",
       successMessage: "",
+      // Estado para mostrar el formulario de creación
       showForm: false,
+      // Datos del formulario de creación
       form: {
         nombre: "",
         fecha_objetivo: "",
         monto_objetivo: "",
       },
-      creating: false,
-      balanceTotal: 0,
-      balanceAsignado: 0,
-      editing: false,
+      creating: false, // Estado de envío del formulario de creación
+      // Balance financiero
+      balanceTotal: 0, // Balance total disponible de la cuenta
+      balanceAsignado: 0, // (Mantenido, aunque no clave en la lógica actual)
+      // Edición de objetivo
+      editing: false, // Estado para mostrar el formulario de edición
       editForm: {
         nombre: "",
         monto_objetivo: "",
@@ -33,10 +47,15 @@ export default class ObjetivoPanel extends React.Component {
     };
   }
 
+  /* --------------------------------------------------------------------------
+   * FP-28: fetchCuenta
+   * Obtiene la cuenta del usuario actual.
+   * ----------------------------------------------------------------------- */
   fetchCuenta = async () => {
     this.setState({ message: "" });
     const { SUPABASE_URL, accessToken, user } = this.props;
     try {
+      // Extraer email del objeto user/props
       const emailFromUser =
         user?.email || user?.correo || user?.user?.email || user?._raw?.correo;
       if (!emailFromUser) {
@@ -52,12 +71,15 @@ export default class ObjetivoPanel extends React.Component {
         ? { ...headersBase, Authorization: `Bearer ${accessToken}` }
         : headersBase;
 
-      // Llamada RPC: get_cuenta_by_email (param name: correo)
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_cuenta_by_email`, {
-        method: "POST",
-        headers: headersAuth,
-        body: JSON.stringify({ correo: emailFromUser }),
-      });
+      // Llamada RPC: get_cuenta_by_email (param: correo) para obtener los datos de la cuenta
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/rpc/get_cuenta_by_email`,
+        {
+          method: "POST",
+          headers: headersAuth,
+          body: JSON.stringify({ correo: emailFromUser }),
+        }
+      );
 
       if (!res.ok) {
         this.setState({
@@ -76,6 +98,7 @@ export default class ObjetivoPanel extends React.Component {
         return;
       }
       const c = data[0];
+      // Almacena la cuenta y limpia la selección/detalle
       this.setState({
         cuenta: {
           correo_cuenta: c.correo_cuenta,
@@ -93,6 +116,10 @@ export default class ObjetivoPanel extends React.Component {
     }
   };
 
+  /* --------------------------------------------------------------------------
+   * FP-28: fetchObjetivos
+   * Obtiene la lista de objetivos de la cuenta.
+   * ----------------------------------------------------------------------- */
   fetchObjetivos = async () => {
     const { SUPABASE_URL, accessToken } = this.props;
     const { cuenta } = this.state;
@@ -110,12 +137,15 @@ export default class ObjetivoPanel extends React.Component {
         ? { ...headersBase, Authorization: `Bearer ${accessToken}` }
         : headersBase;
 
-      // Llamada RPC: get_objetivos_by_cuenta (param name: correo)
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_objetivos_by_cuenta`, {
-        method: "POST",
-        headers: headersAuth,
-        body: JSON.stringify({ correo: cuenta.correo_cuenta }),
-      });
+      // Llamada RPC: get_objetivos_by_cuenta (param: correo)
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/rpc/get_objetivos_by_cuenta`,
+        {
+          method: "POST",
+          headers: headersAuth,
+          body: JSON.stringify({ correo: cuenta.correo_cuenta }),
+        }
+      );
 
       if (!res.ok) {
         this.setState({
@@ -128,10 +158,12 @@ export default class ObjetivoPanel extends React.Component {
       }
       const data = await res.json();
 
+      // Calcula el progreso y porcentaje para cada objetivo
       const objetivosConProgreso = this.calculateProgressForAll(data || []);
 
       this.setState({
         objetivos: objetivosConProgreso,
+        // Selecciona la primera meta por defecto si existe
         selectedId:
           Array.isArray(data) && data.length > 0 ? data[0].id_objetivo : null,
       });
@@ -147,6 +179,10 @@ export default class ObjetivoPanel extends React.Component {
     }
   };
 
+  /* --------------------------------------------------------------------------
+   * FP-29: createObjetivo
+   * Crea un nuevo objetivo para la cuenta.
+   * ----------------------------------------------------------------------- */
   createObjetivo = async (e) => {
     e?.preventDefault();
     this.setState({ message: "", successMessage: "" });
@@ -160,6 +196,7 @@ export default class ObjetivoPanel extends React.Component {
 
     const { nombre, fecha_objetivo, monto_objetivo } = this.state.form;
 
+    // Validación de campos
     if (!nombre || !fecha_objetivo || !monto_objetivo) {
       this.setState({ message: "Completa todos los campos." });
       return;
@@ -173,10 +210,11 @@ export default class ObjetivoPanel extends React.Component {
 
     this.setState({ creating: true });
     try {
+      // Determina el estado inicial (secuencialidad: solo una 'en_progreso')
       const hayMetasActivas = objetivos.some((o) => o.estado === "en_progreso");
       const estadoInicial = hayMetasActivas ? "en_pausa" : "en_progreso";
 
-      // Preparar body con los nombres de parámetro de la función RPC (p_...)
+      // Preparar body con los parámetros de la función RPC (p_...)
       const body = {
         p_correo_cuenta: cuenta.correo_cuenta,
         p_nombre: nombre.trim(),
@@ -192,7 +230,7 @@ export default class ObjetivoPanel extends React.Component {
           "Content-Type": "application/json",
           apikey: this.props.SUPABASE_KEY,
           Authorization: accessToken ? `Bearer ${accessToken}` : "",
-          Prefer: "return=representation",
+          Prefer: "return=representation", // Solicita el objeto creado
         },
         body: JSON.stringify(body),
       });
@@ -206,8 +244,9 @@ export default class ObjetivoPanel extends React.Component {
         return;
       }
 
-      await this.fetchObjetivos();
+      await this.fetchObjetivos(); // Refresca la lista completa
       this.setState({
+        // Selecciona el nuevo objetivo si se devuelve
         selectedId:
           Array.isArray(data) && data.length ? data[0].id_objetivo : null,
         successMessage: `Meta "${nombre}" creada ${
@@ -227,6 +266,10 @@ export default class ObjetivoPanel extends React.Component {
     }
   };
 
+  /* --------------------------------------------------------------------------
+   * FP-34: updateObjetivo
+   * Actualiza el nombre y/o monto objetivo de una meta existente.
+   * ----------------------------------------------------------------------- */
   updateObjetivo = async (e) => {
     e?.preventDefault();
     this.setState({ message: "", successMessage: "" });
@@ -240,6 +283,7 @@ export default class ObjetivoPanel extends React.Component {
 
     const { nombre, monto_objetivo } = editForm;
 
+    // Validación de campos
     if (!nombre || !monto_objetivo) {
       this.setState({ message: "Completa todos los campos." });
       return;
@@ -260,15 +304,18 @@ export default class ObjetivoPanel extends React.Component {
       };
 
       // Llamar RPC update_objetivo_by_id
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/update_objetivo_by_id`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: this.props.SUPABASE_KEY,
-          Authorization: accessToken ? `Bearer ${accessToken}` : "",
-        },
-        body: JSON.stringify(body),
-      });
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/rpc/update_objetivo_by_id`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: this.props.SUPABASE_KEY,
+            Authorization: accessToken ? `Bearer ${accessToken}` : "",
+          },
+          body: JSON.stringify(body),
+        }
+      );
 
       if (!res.ok) {
         const data = await res.json().catch(() => null);
@@ -279,8 +326,8 @@ export default class ObjetivoPanel extends React.Component {
         return;
       }
 
-      await this.fetchObjetivos();
-      await this.fetchDetalle(detalle.id_objetivo);
+      await this.fetchObjetivos(); // Refresca lista con nuevos valores
+      await this.fetchDetalle(detalle.id_objetivo); // Refresca detalle
       this.setState({
         successMessage: "Meta actualizada correctamente",
         editing: false,
@@ -294,27 +341,36 @@ export default class ObjetivoPanel extends React.Component {
     }
   };
 
+  /* --------------------------------------------------------------------------
+   * FP-30: calculateProgressForAll
+   * Calcula el progreso y porcentaje para cada objetivo basado en el balance.
+   * ----------------------------------------------------------------------- */
   calculateProgressForAll = (objetivos) => {
     const { balanceTotal } = this.state;
-    let balanceAsignadoTotal = 0;
+    let balanceAsignadoTotal = 0; // Balance ya consumido por metas 'terminadas'
 
     return objetivos.map((obj) => {
       const monto_objetivo = Number(obj.monto_objetivo) || 0;
 
       if (obj.estado === "terminada") {
+        // Metas terminadas: consumen su monto objetivo del balance
         balanceAsignadoTotal += monto_objetivo;
         return {
           ...obj,
-          progreso: monto_objetivo,
+          progreso: monto_objetivo, // Progreso igual al objetivo
           porcentaje: 100,
         };
       }
 
       if (obj.estado === "en_progreso") {
+        // Meta activa: usa el balance restante (balanceTotal - balanceAsignadoTotal)
         const balanceDisponible = balanceTotal - balanceAsignadoTotal;
-        const progreso = Math.min(balanceDisponible, monto_objetivo);
+        const progreso = Math.min(balanceDisponible, monto_objetivo); // Progreso limitado por el objetivo
         const porcentaje =
           monto_objetivo > 0 ? (progreso / monto_objetivo) * 100 : 0;
+
+        // Suma el progreso al balance ya "consumido" para la lógica secuencial
+        balanceAsignadoTotal += progreso;
 
         return {
           ...obj,
@@ -323,6 +379,7 @@ export default class ObjetivoPanel extends React.Component {
         };
       }
 
+      // Metas en pausa o con otro estado tienen progreso 0
       return {
         ...obj,
         progreso: 0,
@@ -331,6 +388,10 @@ export default class ObjetivoPanel extends React.Component {
     });
   };
 
+  /* --------------------------------------------------------------------------
+   * FP-29: fetchDetalle
+   * Obtiene el detalle de un objetivo específico por su ID.
+   * ----------------------------------------------------------------------- */
   fetchDetalle = async (id) => {
     if (!id) {
       this.setState({ detalle: null });
@@ -348,11 +409,14 @@ export default class ObjetivoPanel extends React.Component {
         : headersBase;
 
       // Llamada RPC get_objetivo_by_id (param p_id)
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_objetivo_by_id`, {
-        method: "POST",
-        headers: headersAuth,
-        body: JSON.stringify({ p_id: id }),
-      });
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/rpc/get_objetivo_by_id`,
+        {
+          method: "POST",
+          headers: headersAuth,
+          body: JSON.stringify({ p_id: id }),
+        }
+      );
 
       if (!res.ok) {
         this.setState({
@@ -372,7 +436,7 @@ export default class ObjetivoPanel extends React.Component {
         return;
       }
 
-      // Actualizar progreso/porcentaje usando los objetivos ya cargados
+      // Reutiliza el cálculo de progreso para asegurar que el detalle refleje el estado actual
       const objetivosActualizados = this.calculateProgressForAll(
         this.state.objetivos
       );
@@ -381,6 +445,7 @@ export default class ObjetivoPanel extends React.Component {
 
       this.setState({
         detalle: detalleActualizado,
+        // Inicializa el formulario de edición con los datos del detalle
         editForm: {
           nombre: detalleActualizado.nombre || "",
           monto_objetivo: detalleActualizado.monto_objetivo || "",
@@ -398,12 +463,17 @@ export default class ObjetivoPanel extends React.Component {
     }
   };
 
+  /* --------------------------------------------------------------------------
+   * FP-33: updateEstadoMeta
+   * Actualiza el estado de un objetivo (activar, pausar, terminar).
+   * ----------------------------------------------------------------------- */
   updateEstadoMeta = async (id, nuevoEstado) => {
     const { objetivos } = this.state;
     const metaActual = objetivos.find((o) => o.id_objetivo === id);
 
     if (!metaActual) return;
 
+    // Validación: No se puede marcar como terminada si no se ha alcanzado el progreso
     if (
       nuevoEstado === "terminada" &&
       metaActual.progreso < metaActual.monto_objetivo
@@ -428,27 +498,37 @@ export default class ObjetivoPanel extends React.Component {
         ? { ...headersBase, Authorization: `Bearer ${accessToken}` }
         : headersBase;
 
+      // Lógica de Secuencialidad: Pausar otras metas 'en_progreso' si se activa una nueva
       if (nuevoEstado === "en_progreso") {
         const metasActivas = objetivos.filter(
           (o) => o.estado === "en_progreso" && o.id_objetivo !== id
         );
 
-        // Pausar metas activas existentes vía RPC update_objetivo_estado_by_id
         for (const meta of metasActivas) {
-          await fetch(`${SUPABASE_URL}/rest/v1/rpc/update_objetivo_estado_by_id`, {
-            method: "POST",
-            headers: headersAuth,
-            body: JSON.stringify({ p_id: meta.id_objetivo, p_estado: "en_pausa" }),
-          });
+          // Llama a RPC para pausar las otras metas activas
+          await fetch(
+            `${SUPABASE_URL}/rest/v1/rpc/update_objetivo_estado_by_id`,
+            {
+              method: "POST",
+              headers: headersAuth,
+              body: JSON.stringify({
+                p_id: meta.id_objetivo,
+                p_estado: "en_pausa",
+              }),
+            }
+          );
         }
       }
 
-      // Actualizar estado de la meta objetivo (RPC)
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/update_objetivo_estado_by_id`, {
-        method: "POST",
-        headers: headersAuth,
-        body: JSON.stringify({ p_id: id, p_estado: nuevoEstado }),
-      });
+      // Actualizar estado de la meta objetivo (RPC: update_objetivo_estado_by_id)
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/rpc/update_objetivo_estado_by_id`,
+        {
+          method: "POST",
+          headers: headersAuth,
+          body: JSON.stringify({ p_id: id, p_estado: nuevoEstado }),
+        }
+      );
 
       if (!res.ok) {
         this.setState({
@@ -458,25 +538,37 @@ export default class ObjetivoPanel extends React.Component {
         return;
       }
 
+      // Lógica de Secuencialidad: Activar la siguiente meta después de completar una
       if (nuevoEstado === "terminada") {
-        // Cuando se completa, activar la siguiente meta en pausa (si existe)
-        // Obtenemos la lista actualizada de objetivos desde la DB (RPC)
-        const listRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_objetivos_by_cuenta`, {
-          method: "POST",
-          headers: headersAuth,
-          body: JSON.stringify({ correo: this.state.cuenta.correo_cuenta }),
-        });
+        // Obtener lista actualizada de la DB para encontrar la siguiente en pausa (por menor ID)
+        const listRes = await fetch(
+          `${SUPABASE_URL}/rest/v1/rpc/get_objetivos_by_cuenta`,
+          {
+            method: "POST",
+            headers: headersAuth,
+            body: JSON.stringify({ correo: this.state.cuenta.correo_cuenta }),
+          }
+        );
         const listData = (await listRes.json().catch(() => [])) || [];
+
+        // Buscar la meta 'en_pausa' más antigua (menor id_objetivo)
         const siguienteMeta = listData
           .filter((o) => o.estado === "en_pausa")
           .sort((a, b) => a.id_objetivo - b.id_objetivo)[0];
 
         if (siguienteMeta) {
-          await fetch(`${SUPABASE_URL}/rest/v1/rpc/update_objetivo_estado_by_id`, {
-            method: "POST",
-            headers: headersAuth,
-            body: JSON.stringify({ p_id: siguienteMeta.id_objetivo, p_estado: "en_progreso" }),
-          });
+          // Activar la siguiente meta en pausa
+          await fetch(
+            `${SUPABASE_URL}/rest/v1/rpc/update_objetivo_estado_by_id`,
+            {
+              method: "POST",
+              headers: headersAuth,
+              body: JSON.stringify({
+                p_id: siguienteMeta.id_objetivo,
+                p_estado: "en_progreso",
+              }),
+            }
+          );
           this.setState({
             successMessage: `¡Meta completada! "${siguienteMeta.nombre}" ahora está activa.`,
           });
@@ -489,8 +581,8 @@ export default class ObjetivoPanel extends React.Component {
         this.setState({ successMessage: "Meta pausada" });
       }
 
-      await this.fetchObjetivos();
-      await this.fetchDetalle(id);
+      await this.fetchObjetivos(); // Refresca lista y re-calcula progreso
+      await this.fetchDetalle(id); // Refresca detalle
 
       setTimeout(() => this.setState({ successMessage: "" }), 3000);
     } catch (err) {
@@ -501,6 +593,10 @@ export default class ObjetivoPanel extends React.Component {
     }
   };
 
+  /* --------------------------------------------------------------------------
+   * FP-35: fetchBalanceTotal
+   * Obtiene el balance total disponible de la cuenta.
+   * ----------------------------------------------------------------------- */
   fetchBalanceTotal = async () => {
     const { SUPABASE_URL, accessToken } = this.props;
     const { cuenta } = this.state;
@@ -519,12 +615,15 @@ export default class ObjetivoPanel extends React.Component {
         ? { ...headersBase, Authorization: `Bearer ${accessToken}` }
         : headersBase;
 
-      // Reutilizar RPC get_all_active_movements para obtener todos los movimientos y calcular balance
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_all_active_movements`, {
-        method: "POST",
-        headers: headersAuth,
-        body: JSON.stringify({ correo: cuenta.correo_cuenta }),
-      });
+      // Reutilizar RPC get_all_active_movements para obtener todos los movimientos activos
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/rpc/get_all_active_movements`,
+        {
+          method: "POST",
+          headers: headersAuth,
+          body: JSON.stringify({ correo: cuenta.correo_cuenta }),
+        }
+      );
 
       if (!res.ok) {
         this.setState({ balanceTotal: 0 });
@@ -536,8 +635,8 @@ export default class ObjetivoPanel extends React.Component {
       let totalIncome = 0;
       let totalExpense = 0;
 
+      // Cálculo del balance: suma de ingresos (tipo=true) menos gastos (tipo=false)
       (dataConceptoEsp || []).forEach((m) => {
-        // m.tipo puede venir como booleano
         const tipo = m.tipo;
         const monto = Number(m.monto || 0);
         if (tipo === true) totalIncome += monto;
@@ -545,6 +644,7 @@ export default class ObjetivoPanel extends React.Component {
       });
 
       const balance = totalIncome - totalExpense;
+      // El balance total disponible para metas debe ser Math.max(0, balance)
       this.setState({ balanceTotal: Math.max(0, balance) });
     } catch (err) {
       console.error("fetchBalanceTotal error:", err);
@@ -552,6 +652,10 @@ export default class ObjetivoPanel extends React.Component {
     }
   };
 
+  /* --------------------------------------------------------------------------
+   * Helper: currency
+   * Formatea un número como moneda (EUR).
+   * ----------------------------------------------------------------------- */
   currency = (v) =>
     new Intl.NumberFormat("es-ES", {
       style: "currency",
@@ -559,8 +663,16 @@ export default class ObjetivoPanel extends React.Component {
       maximumFractionDigits: 2,
     }).format(Number(v || 0));
 
+  /* --------------------------------------------------------------------------
+   * Helper: percent
+   * Formatea un número como porcentaje.
+   * ----------------------------------------------------------------------- */
   percent = (v) => `${Number(v || 0).toFixed(1)}%`;
 
+  /* --------------------------------------------------------------------------
+   * Helper: Spinner
+   * Componente funcional simple para mostrar un spinner de carga.
+   * ----------------------------------------------------------------------- */
   Spinner = ({ size = 18 }) => (
     <span
       role="status"
@@ -578,10 +690,14 @@ export default class ObjetivoPanel extends React.Component {
     />
   );
 
+  /* --------------------------------------------------------------------------
+   * Helper: chartData
+   * Prepara los datos para el gráfico de dona (Doughnut chart) de Chart.js.
+   * ----------------------------------------------------------------------- */
   chartData = (monto_objetivo = 0, progreso = 0) => {
     const prog = Number(progreso) || 0;
     const objetivo = Number(monto_objetivo) || 0;
-    const restante = Math.max(objetivo - prog, 0);
+    const restante = Math.max(objetivo - prog, 0); // Cálculo de monto restante
     return {
       labels: ["Progreso", "Restante"],
       datasets: [
@@ -595,17 +711,27 @@ export default class ObjetivoPanel extends React.Component {
     };
   };
 
+  /* --------------------------------------------------------------------------
+   * FP-28: componentDidMount
+   * Llama a fetchCuenta al montar el componente.
+   * ----------------------------------------------------------------------- */
   componentDidMount() {
     this.fetchCuenta();
   }
 
+  /* --------------------------------------------------------------------------
+   * FP-28/FP-29: componentDidUpdate
+   * Maneja el flujo de recarga de datos al cambiar props/state (cuenta, objetivos, balance).
+   * ----------------------------------------------------------------------- */
   componentDidUpdate(prevProps, prevState) {
+    // 1. Si cambian props de autenticación, recargar cuenta
     if (
       this.props.accessToken !== prevProps.accessToken ||
       this.props.user !== prevProps.user
     ) {
       this.fetchCuenta();
     }
+    // 2. Si la cuenta es obtenida o cambia, recargar balance y objetivos
     if (
       this.state.cuenta &&
       (!prevState.cuenta ||
@@ -614,6 +740,7 @@ export default class ObjetivoPanel extends React.Component {
       this.fetchBalanceTotal();
       this.fetchObjetivos();
     }
+    // 3. Si se selecciona un objetivo o cambia la cuenta, recargar detalle
     if (
       this.state.selectedId &&
       (this.state.selectedId !== prevState.selectedId ||
@@ -623,9 +750,11 @@ export default class ObjetivoPanel extends React.Component {
     ) {
       this.fetchDetalle(this.state.selectedId);
     }
+    // Deselección de objetivo: Limpiar detalle
     if (!this.state.selectedId && prevState.selectedId) {
       this.setState({ detalle: null });
     }
+    // 4. Si el balance total se actualiza y hay objetivos, recalcular el progreso
     if (
       this.state.balanceTotal !== prevState.balanceTotal &&
       this.state.objetivos.length > 0
@@ -635,6 +764,7 @@ export default class ObjetivoPanel extends React.Component {
       );
       this.setState({ objetivos: objetivosActualizados });
 
+      // Si hay un detalle seleccionado, actualizarlo con el nuevo progreso
       if (this.state.detalle) {
         const detalleActualizado = objetivosActualizados.find(
           (o) => o.id_objetivo === this.state.detalle.id_objetivo
@@ -646,6 +776,10 @@ export default class ObjetivoPanel extends React.Component {
     }
   }
 
+  /* --------------------------------------------------------------------------
+   * Estilos (styles)
+   * Objeto que contiene estilos en línea para el layout.
+   * ----------------------------------------------------------------------- */
   styles = {
     container: { display: "flex", gap: 20, flexWrap: "wrap", padding: 12 },
     left: { flex: "1 1 360px", minWidth: 320 },
@@ -685,6 +819,10 @@ export default class ObjetivoPanel extends React.Component {
     }),
   };
 
+  /* --------------------------------------------------------------------------
+   * FP-30/FP-31/FP-32/FP-34: render
+   * Renderiza la interfaz de usuario: lista de metas, balance, detalle, y formularios.
+   * ----------------------------------------------------------------------- */
   render() {
     const {
       cuenta,
@@ -709,6 +847,7 @@ export default class ObjetivoPanel extends React.Component {
     return (
       <>
         <style>{`
+          /* Estilos CSS definidos en línea (buttons, badges, input) */
           @keyframes spin { to { transform: rotate(360deg); } }
           .btn {
             padding: 8px 12px;
@@ -767,6 +906,7 @@ export default class ObjetivoPanel extends React.Component {
           }
         `}</style>
         <div style={styles.container}>
+          {/* Panel Izquierdo: Lista de Metas (FP-31) y Formulario de Creación (FP-29) */}
           <div style={styles.left}>
             <div style={styles.card}>
               <div
@@ -785,6 +925,7 @@ export default class ObjetivoPanel extends React.Component {
                     Progresa meta por meta secuencialmente
                   </p>
                 </div>
+                {/* Botón Refrescar (llama a fetchCuenta, fetchBalanceTotal, fetchObjetivos) */}
                 <button
                   className="btn"
                   onClick={async () => {
@@ -797,6 +938,7 @@ export default class ObjetivoPanel extends React.Component {
                 </button>
               </div>
 
+              {/* Contenedores de mensajes (message/successMessage) */}
               {message && (
                 <div
                   style={{
@@ -826,6 +968,7 @@ export default class ObjetivoPanel extends React.Component {
                 </div>
               )}
 
+              {/* Display de Balance Total Disponible (FP-35) */}
               <div
                 style={{
                   marginBottom: 12,
@@ -852,6 +995,7 @@ export default class ObjetivoPanel extends React.Component {
                 )}
               </div>
 
+              {/* Botón Crear Meta */}
               <div style={{ marginBottom: 12 }}>
                 <label
                   style={{ fontWeight: 600, display: "block", marginBottom: 6 }}
@@ -884,6 +1028,7 @@ export default class ObjetivoPanel extends React.Component {
                 </div>
               </div>
 
+              {/* Formulario de Creación de Meta (FP-29) */}
               {showForm && (
                 <div
                   style={{
@@ -899,6 +1044,7 @@ export default class ObjetivoPanel extends React.Component {
                     onSubmit={this.createObjetivo}
                     style={{ display: "grid", gap: 10 }}
                   >
+                    {/* Campos del formulario: Nombre, Fecha, Monto Objetivo */}
                     <label>
                       <div
                         style={{
@@ -965,6 +1111,7 @@ export default class ObjetivoPanel extends React.Component {
                         placeholder="1000.00"
                       />
                     </label>
+                    {/* Botones Crear y Limpiar */}
                     <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
                       <button
                         className="btn btn-primary"
@@ -999,6 +1146,7 @@ export default class ObjetivoPanel extends React.Component {
                 </div>
               )}
 
+              {/* Lista de Metas (FP-31) */}
               <div style={{ marginTop: 12 }}>
                 <h4 style={{ margin: "0 0 12px 0", fontSize: 15 }}>
                   Mis metas
@@ -1022,6 +1170,7 @@ export default class ObjetivoPanel extends React.Component {
                         key={o.id_objetivo}
                         style={styles.smallCard(isActive)}
                       >
+                        {/* Indicador de meta ACTIVA */}
                         {isActive && (
                           <div
                             style={{
@@ -1041,6 +1190,7 @@ export default class ObjetivoPanel extends React.Component {
                             ⚡ ACTIVA
                           </div>
                         )}
+                        {/* Gráfico de dona (progreso) (FP-30) */}
                         <div style={{ width: 60, flexShrink: 0 }}>
                           <Doughnut
                             data={this.chartData(
@@ -1053,6 +1203,7 @@ export default class ObjetivoPanel extends React.Component {
                             }}
                           />
                         </div>
+                        {/* Información del objetivo y barra de progreso (FP-30) */}
                         <div style={{ flex: 1 }}>
                           <div
                             style={{
@@ -1065,6 +1216,7 @@ export default class ObjetivoPanel extends React.Component {
                             <div style={{ fontWeight: 700, fontSize: 15 }}>
                               {o.nombre || `Meta #${o.id_objetivo}`}
                             </div>
+                            {/* Badge de estado */}
                             <span
                               className={`badge ${
                                 isCompleted
@@ -1093,6 +1245,7 @@ export default class ObjetivoPanel extends React.Component {
                             {" · "}
                             {o.fecha_objetivo}
                           </div>
+                          {/* Barra de Progreso */}
                           <div style={{ marginBottom: 6 }}>
                             <div style={styles.progressOuter}>
                               <div
@@ -1100,6 +1253,7 @@ export default class ObjetivoPanel extends React.Component {
                               />
                             </div>
                           </div>
+                          {/* Progreso y Porcentaje */}
                           <div
                             style={{
                               fontSize: 12,
@@ -1127,6 +1281,7 @@ export default class ObjetivoPanel extends React.Component {
                             )}
                           </div>
                         </div>
+                        {/* Botones de acción: Ver, Activar/Pausar (FP-33) */}
                         <div
                           style={{
                             display: "flex",
@@ -1177,7 +1332,7 @@ export default class ObjetivoPanel extends React.Component {
             </div>
           </div>
 
-          {/* Panel derecho - Detalle */}
+          {/* Panel derecho - Detalle & progreso (FP-32) */}
           <div style={styles.right}>
             <div style={styles.card}>
               <h3 style={{ margin: "0 0 16px 0" }}>Detalle & progreso</h3>
@@ -1191,6 +1346,7 @@ export default class ObjetivoPanel extends React.Component {
                 </p>
               ) : (
                 <div>
+                  {/* Formulario de Edición (FP-34) */}
                   {editing ? (
                     <div
                       style={{
@@ -1206,6 +1362,7 @@ export default class ObjetivoPanel extends React.Component {
                         onSubmit={this.updateObjetivo}
                         style={{ display: "grid", gap: 10 }}
                       >
+                        {/* Campos del formulario de edición: Nombre, Monto Objetivo */}
                         <label>
                           <div
                             style={{
@@ -1255,6 +1412,7 @@ export default class ObjetivoPanel extends React.Component {
                             }
                           />
                         </label>
+                        {/* Botones Guardar y Cancelar */}
                         <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
                           <button
                             className="btn btn-primary"
@@ -1275,6 +1433,7 @@ export default class ObjetivoPanel extends React.Component {
                     </div>
                   ) : (
                     <>
+                      {/* Gráfico y detalles principales */}
                       <div
                         style={{
                           display: "flex",
@@ -1284,6 +1443,7 @@ export default class ObjetivoPanel extends React.Component {
                         }}
                       >
                         <div style={{ width: 140, flexShrink: 0 }}>
+                          {/* Gráfico de dona grande */}
                           <Doughnut
                             data={this.chartData(
                               detalle.monto_objetivo,
@@ -1300,6 +1460,7 @@ export default class ObjetivoPanel extends React.Component {
                             }}
                           />
                         </div>
+                        {/* Información del objetivo seleccionado */}
                         <div style={{ flex: 1 }}>
                           <h4 style={{ margin: "0 0 8px 0" }}>
                             {detalle.nombre || `Meta #${detalle.id_objetivo}`}
@@ -1344,6 +1505,7 @@ export default class ObjetivoPanel extends React.Component {
                         </div>
                       </div>
 
+                      {/* Montos Objetivo y Progreso */}
                       <div
                         style={{
                           display: "grid",
@@ -1417,6 +1579,7 @@ export default class ObjetivoPanel extends React.Component {
                         </div>
                       </div>
 
+                      {/* Barra de Progreso y Porcentaje Grande (FP-30) */}
                       <div style={{ marginBottom: 20 }}>
                         <div
                           style={{
@@ -1446,6 +1609,7 @@ export default class ObjetivoPanel extends React.Component {
                         </div>
                       </div>
 
+                      {/* Mensajes de estado */}
                       {detalle.estado === "terminada" && (
                         <div
                           style={{
@@ -1493,7 +1657,7 @@ export default class ObjetivoPanel extends React.Component {
                         </div>
                       )}
 
-                      {/* Acciones */}
+                      {/* Acciones (Botones de control de estado/edición) (FP-33, FP-34) */}
                       <div
                         style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
                       >
@@ -1537,6 +1701,7 @@ export default class ObjetivoPanel extends React.Component {
                             Activar meta
                           </button>
                         )}
+                        {/* Botón de completar solo si está activa y al 100% */}
                         {detalle.estado === "en_progreso" &&
                           detalle.porcentaje >= 100 && (
                             <button
@@ -1555,6 +1720,7 @@ export default class ObjetivoPanel extends React.Component {
                           )}
                       </div>
 
+                      {/* Mensaje de progreso faltante */}
                       {detalle.estado === "en_progreso" &&
                         detalle.porcentaje < 100 && (
                           <div
