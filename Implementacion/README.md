@@ -14,21 +14,21 @@ Para que esta aplicación funcione, necesitarás tener instaladas dos cosas en t
 
 Node.js es el programa que permite a tu computadora ejecutar el código de React.
 
-* **¿Cómo instalarlo?**
-    1.  Ve a la página oficial de Node.js: [https://nodejs.org/](https://nodejs.org/)
-    2.  Descarga e instala la versión **LTS (Recomendada para la mayoría de usuarios)**.
-    3.  Sigue las instrucciones del instalador (normalmente basta con presionar "Siguiente" o "Next" varias veces).
+- **¿Cómo instalarlo?**
+  1.  Ve a la página oficial de Node.js: [https://nodejs.org/](https://nodejs.org/)
+  2.  Descarga e instala la versión **LTS (Recomendada para la mayoría de usuarios)**.
+  3.  Sigue las instrucciones del instalador (normalmente basta con presionar "Siguiente" o "Next" varias veces).
 
 ### B. Supabase (La Base de Datos en la Nube)
 
 Supabase es donde se guardarán tus cuentas, movimientos y conceptos.
 
-* **¿Qué necesitas de Supabase?**
-    1.  Una **cuenta** gratuita en [Supabase.com](https://supabase.com/).
-    2.  Crear un nuevo **Proyecto**.
-    3.  Obtener dos datos clave de tu proyecto (los encontrarás en la sección **Settings > API**):
-        * `SUPABASE_URL`: La URL de tu API (ej: `https://abcd1234.supabase.co`).
-        * `SUPABASE_KEY`: La clave pública (`anon key`).
+- **¿Qué necesitas de Supabase?**
+  1.  Una **cuenta** gratuita en [Supabase.com](https://supabase.com/).
+  2.  Crear un nuevo **Proyecto**.
+  3.  Obtener dos datos clave de tu proyecto (los encontrarás en la sección **Settings > API**):
+      - `SUPABASE_URL`: La URL de tu API (ej: `https://abcd1234.supabase.co`).
+      - `SUPABASE_KEY`: La clave pública (`anon key`).
 
 ---
 
@@ -40,18 +40,18 @@ Antes de ejecutar el código, debes asegurarte de que la estructura de tu base d
 
 Tu aplicación utiliza las siguientes tablas (como se ve en el esquema de la imagen):
 
-* `usuario`
-* `cuenta`
-* `concepto`
-* `objetivo`
-* `movimiento_concepto`
-* `movimiento_espontaneo`
+- `usuario`
+- `cuenta`
+- `concepto`
+- `objetivo`
+- `movimiento_concepto`
+- `movimiento_espontaneo`
 
-Debes crearlas manualmente siguiendo la estructura del esquema
+Debes crearlas manualmente, se encuentran en la siguiente carpeta `ScriptsSQL/Creacion de Tablas`
 
 ### B. Funciones RPC (Remote Procedure Call)
 
-La aplicación hace llamadas a funciones especiales en Supabase (llamadas RPC). **Estas funciones deben estar creadas en la base de datos**
+La aplicación hace llamadas a funciones especiales en Supabase (llamadas RPC). **Estas funciones deben estar creadas en la base de datos**; se encuentran en la siguiente carpeta `ScriptsSQL/Creacion de Funciones`
 
 ---
 
@@ -81,3 +81,4 @@ Los proyectos de React usan librerías externas. Este comando las descarga e ins
 
 ```bash
 npm install
+```
