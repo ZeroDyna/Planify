@@ -1,0 +1,738 @@
+-- =========================================================
+-- 1. Función RPC: check_email_registered
+-- Verifica si un correo existe en la tabla usuario
+-- =========================================================
+CREATE OR REPLACE FUNCTION public.check_email_registered(
+    p_email text
+)
+RETURNS boolean
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_exists boolean;
+BEGIN
+    -- Busca si existe alguna fila en la tabla usuario con el correo dado
+    SELECT EXISTS(SELECT 1 FROM usuario WHERE correo = p_email) INTO v_exists;
+    RETURN v_exists;
+END;
+$$;
+
+-- =========================================================
+-- 2. Función RPC: create_concepto
+-- Inserta un nuevo concepto y retorna el registro creado
+-- =========================================================
+CREATE OR REPLACE FUNCTION public.create_concepto(
+    p_correo_cuenta text,
+    p_nombre_concepto text,
+    p_tipo boolean,
+    p_periodo text,
+    p_activo boolean
+)
+RETURNS SETOF public.concepto -- Retorna el tipo de la tabla
+LANGUAGE sql
+AS $$
+    INSERT INTO public.concepto (correo_cuenta, nombre_concepto, tipo, periodo, activo)
+    VALUES (p_correo_cuenta, p_nombre_concepto, p_tipo, p_periodo, p_activo)
+    RETURNING 
+        -- Las conversiones ::TEXT se mantienen según tu solicitud,
+        -- aunque la recomendación es omitirlas si usas RETURNS SETOF public.concepto.
+        concepto.id_concepto,
+        concepto.correo_cuenta::TEXT,
+        concepto.nombre_concepto::TEXT,
+        concepto.tipo,
+        concepto.periodo::TEXT,
+        concepto.activo;
+$$;
+
+-- =========================================================
+-- 3. Función RPC: get_all_active_movements
+-- Retorna todos los movimientos (concepto y espontáneo) para un correo dado
+-- =========================================================
+CREATE OR REPLACE FUNCTION public.get_all_active_movements(
+    correo text -- Parámetro para filtrar por correo
+)
+RETURNS TABLE (
+    fecha date,
+    nombre_movimiento text,
+    tipo boolean,
+    monto numeric,
+    correo_cuenta text,
+    source_table text,
+    id bigint
+)
+LANGUAGE sql
+AS $$
+  select *
+  from (
+    -- Movimientos por Concepto
+    select
+      mc.fecha_operacion::date as fecha,
+      coalesce(c.nombre_concepto, 'Concepto') as nombre_movimiento,
+      (c.tipo)::boolean as tipo,
+      mc.monto::numeric as monto,
+      mc.correo_cuenta,
+      'concepto'::text as source_table,
+      mc.id_movimiento_concepto::bigint as id -- id_movimiento_concepto (int4) casteado a bigint
+    from public.movimiento_concepto mc
+    left join public.concepto c on c.id_concepto = mc.id_concepto
+    where mc.correo_cuenta = correo
+
+    union all
+
+    -- Movimientos Espontáneos
+    select
+      me.fecha_operacion::date as fecha,
+      coalesce(me.motivo, 'Sin motivo') as nombre_movimiento,
+      (me.tipo)::boolean as tipo,
+      me.monto::numeric as monto,
+      me.correo_cuenta,
+      'espontaneo'::text as source_table,
+      me.id_movimiento_espontaneo::bigint as id -- id_movimiento_espontaneo (int4) casteado a bigint
+    from public.movimiento_espontaneo me
+    where me.correo_cuenta = correo
+  ) t
+  order by fecha;
+$$;
+
+-- =========================================================
+-- 4. Función RPC: get_conceptos_by_cuenta
+-- Retorna todos los conceptos activos asociados a un correo de cuenta
+-- =========================================================
+CREATE OR REPLACE FUNCTION public.get_conceptos_by_cuenta(
+    correo text -- Parámetro para filtrar por correo de la cuenta
+)
+RETURNS SETOF public.concepto -- Retorna toda la estructura de la tabla concepto
+LANGUAGE sql
+AS $$
+  select id_concepto, correo_cuenta, nombre_concepto, tipo, periodo, activo
+  from public.concepto
+  where correo_cuenta = correo
+    and activo = true
+  order by id_concepto asc;
+$$;
+
+-- =========================================================
+-- 5. Función RPC: get_cuenta_by_email
+-- Retorna la cuenta asociada a un correo de usuario
+-- =========================================================
+CREATE OR REPLACE FUNCTION public.get_cuenta_by_email(
+    correo text -- Parámetro para filtrar por correo del usuario
+)
+RETURNS TABLE (
+    correo_cuenta text,
+    nombre_cuenta text
+)
+LANGUAGE sql
+AS $$
+  select correo_cuenta::text,
+         coalesce(nombre_cuenta, correo_cuenta)::text as nombre_cuenta
+  from public.cuenta
+  where correo_usuario = correo
+  limit 1;
+$$;
+
+-- =========================================================
+-- 6. Función RPC: get_cuenta_by_user
+-- Retorna el correo y nombre de la cuenta asociada a un correo de usuario
+-- =========================================================
+CREATE OR REPLACE FUNCTION public.get_cuenta_by_user(
+    p_correo_usuario text -- Parámetro de correo del usuario
+)
+RETURNS TABLE (
+    correo_cuenta text,
+    nombre_cuenta text
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        c.correo_cuenta::TEXT,
+        c.nombre_cuenta::TEXT
+    FROM public.cuenta c
+    WHERE c.correo_usuario = p_correo_usuario
+    LIMIT 1;
+END;
+$$;
+
+-- =========================================================
+-- 7. Función RPC: get_movements_range
+-- Retorna todos los movimientos (concepto y espontáneo) dentro de un rango de fechas
+-- =========================================================
+CREATE OR REPLACE FUNCTION public.get_movements_range(
+    correo text,      -- Correo de la cuenta
+    start_date date,  -- Fecha de inicio
+    end_date date     -- Fecha de fin
+)
+RETURNS TABLE (
+    fecha date,
+    nombre_movimiento text,
+    tipo boolean,
+    monto numeric,
+    correo_cuenta text,
+    source_table text,
+    id bigint
+)
+LANGUAGE sql
+AS $$
+  select *
+  from (
+    -- Movimientos por Concepto
+    select
+      mc.fecha_operacion::date as fecha,
+      coalesce(c.nombre_concepto, 'Concepto') as nombre_movimiento,
+      (c.tipo)::boolean as tipo,
+      mc.monto::numeric as monto,
+      mc.correo_cuenta,
+      'concepto'::text as source_table,
+      mc.id_movimiento_concepto::bigint as id
+    from public.movimiento_concepto mc
+    left join public.concepto c on c.id_concepto = mc.id_concepto
+    where mc.correo_cuenta = correo
+      and mc.fecha_operacion between start_date and end_date
+
+    union all
+
+    -- Movimientos Espontáneos
+    select
+      me.fecha_operacion::date as fecha,
+      coalesce(me.motivo, 'Sin motivo') as nombre_movimiento,
+      (me.tipo)::boolean as tipo,
+      me.monto::numeric as monto,
+      me.correo_cuenta,
+      'espontaneo'::text as source_table,
+      me.id_movimiento_espontaneo::bigint as id
+    from public.movimiento_espontaneo me
+    where me.correo_cuenta = correo
+      and me.fecha_operacion between start_date and end_date
+  ) t
+  order by fecha;
+$$;
+
+-- =========================================================
+-- 8. Función RPC: get_objetivo_by_id
+-- Retorna un objetivo específico por su ID
+-- =========================================================
+CREATE OR REPLACE FUNCTION public.get_objetivo_by_id(
+    p_id integer -- ID del objetivo a buscar
+)
+RETURNS TABLE (
+    id_objetivo integer,
+    correo_cuenta text,
+    nombre text,
+    fecha_objetivo date,
+    monto_objetivo numeric,
+    estado text,
+    numero_objetivo integer
+)
+LANGUAGE sql
+AS $$
+  select id_objetivo,
+         correo_cuenta::text,
+         nombre::text,
+         fecha_objetivo::date,
+         monto_objetivo::numeric,
+         estado::text,
+         numero_objetivo
+  from public.objetivo
+  where id_objetivo = p_id
+  limit 1;
+$$;
+
+-- =========================================================
+-- 9. Función RPC: get_objetivos_by_cuenta
+-- Retorna todos los objetivos asociados a un correo de cuenta
+-- =========================================================
+CREATE OR REPLACE FUNCTION public.get_objetivos_by_cuenta(
+    correo text -- Parámetro para filtrar por correo de la cuenta
+)
+RETURNS TABLE (
+    id_objetivo integer,
+    correo_cuenta text,
+    nombre text,
+    fecha_objetivo date,
+    monto_objetivo numeric,
+    estado text,
+    numero_objetivo integer
+)
+LANGUAGE sql
+AS $$
+  select id_objetivo, 
+         correo_cuenta::text, 
+         nombre::text, 
+         fecha_objetivo::date, 
+         monto_objetivo::numeric, 
+         estado::text, 
+         numero_objetivo
+  from public.objetivo
+  where correo_cuenta = correo
+  order by coalesce(numero_objetivo, id_objetivo) asc;
+$$;
+
+-- =========================================================
+-- 10. Función RPC: get_user_account_data
+-- Retorna datos combinados del usuario y su cuenta
+-- =========================================================
+CREATE OR REPLACE FUNCTION public.get_user_account_data(
+    p_email text
+)
+RETURNS TABLE (
+    correo text,
+    nombre_usuario text,
+    contrasena text,
+    ubicacion text,
+    lugar_trabajo text,
+    correo_cuenta text,
+    fecha_creacion date,
+    activo boolean,
+    nombre_cuenta text,
+    correo_usuario_fk text
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        u.correo::TEXT,
+        u.nombre_usuario::TEXT,
+        u.contrasena::TEXT,
+        u.ubicacion::TEXT,
+        u.lugar_trabajo::TEXT,
+        c.correo_cuenta::TEXT,
+        c.fecha_creacion::DATE,
+        c.activo::BOOLEAN,
+        c.nombre_cuenta::TEXT,
+        c.correo_usuario::TEXT
+    FROM public.usuario u
+    LEFT JOIN public.cuenta c ON u.correo = c.correo_usuario
+    WHERE u.correo = p_email;
+END;
+$$;
+
+-- =========================================================
+-- 11. Función RPC: get_user_data
+-- Retorna datos básicos del usuario (sin contraseña)
+-- =========================================================
+CREATE OR REPLACE FUNCTION public.get_user_data(
+    p_correo text
+)
+RETURNS TABLE (
+    correo text,
+    nombre_usuario text,
+    ubicacion text,
+    lugar_trabajo text
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        u.correo::TEXT, 
+        u.nombre_usuario::TEXT, 
+        u.ubicacion::TEXT, 
+        u.lugar_trabajo::TEXT
+    FROM public.usuario u
+    WHERE u.correo = p_correo;
+END;
+$$;
+
+-- =========================================================
+-- 12. Función RPC: insert_objetivo
+-- Inserta un nuevo objetivo y retorna la fila creada
+-- =========================================================
+CREATE OR REPLACE FUNCTION public.insert_objetivo(
+    p_correo_cuenta text,
+    p_nombre text,
+    p_fecha_objetivo date,
+    p_monto_objetivo numeric,
+    p_estado text
+)
+RETURNS SETOF public.objetivo
+LANGUAGE plpgsql
+AS $$
+begin
+  return query
+  insert into public.objetivo (correo_cuenta, nombre, fecha_objetivo, monto_objetivo, estado)
+  values (p_correo_cuenta, p_nombre, p_fecha_objetivo, p_monto_objetivo, p_estado)
+  returning id_objetivo, correo_cuenta, nombre, fecha_objetivo, monto_objetivo, estado, numero_objetivo;
+end;
+$$;
+
+-- =========================================================
+-- 13. Función RPC: login_user_validate
+-- Verifica las credenciales de un usuario
+-- =========================================================
+CREATE OR REPLACE FUNCTION public.login_user_validate(
+    p_correo text,
+    p_password text
+)
+RETURNS boolean
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_password_stored varchar;
+BEGIN
+    -- 1. Intenta obtener la contraseña del usuario
+    SELECT contrasena INTO v_password_stored
+    FROM public.usuario
+    WHERE correo = p_correo;
+    
+    -- 2. Si no se encontró el correo, retorna falso
+    IF NOT FOUND THEN
+        RETURN false;
+    END IF;
+    
+    -- 3. Compara la contraseña almacenada con la contraseña proporcionada
+    RETURN (v_password_stored = p_password);
+END;
+$$;
+
+-- =========================================================
+-- 14. Función RPC: signup_user_and_account
+-- Registra un nuevo usuario y crea su cuenta asociada
+-- =========================================================
+CREATE OR REPLACE FUNCTION public.signup_user_and_account(
+    p_correo text,
+    p_nombre_usuario text,
+    p_password text
+)
+RETURNS boolean
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    -- Verificar si el correo ya existe en usuario
+    IF EXISTS(SELECT 1 FROM public.usuario WHERE correo = p_correo) THEN
+        RETURN false;
+    END IF;
+    
+    -- Verificar si el correo ya existe como correo_cuenta (para prevenir duplicidad)
+    IF EXISTS(SELECT 1 FROM public.cuenta WHERE correo_cuenta = p_correo) THEN
+        RETURN false;
+    END IF;
+    
+    -- Insertar usuario
+    INSERT INTO public.usuario (correo, nombre_usuario, contrasena)
+    VALUES (p_correo, p_nombre_usuario, p_password);
+    
+    -- Insertar cuenta
+    INSERT INTO public.cuenta (correo_cuenta, fecha_creacion, activo, nombre_cuenta, correo_usuario)
+    VALUES (
+        p_correo,
+        CURRENT_DATE,
+        true,
+        'Cuenta de ' || p_nombre_usuario,
+        p_correo
+    );
+    
+    RETURN true;
+    
+EXCEPTION
+    WHEN OTHERS THEN
+        -- Captura cualquier otro error de inserción
+        RETURN false;
+END;
+$$;
+
+-- =========================================================
+-- 15. Función RPC: unmark_movimiento_concepto_by_id
+-- Elimina un registro de la tabla movimiento_concepto por ID
+-- =========================================================
+CREATE OR REPLACE FUNCTION public.unmark_movimiento_concepto_by_id(
+    p_id integer
+)
+RETURNS integer -- Retorna el número de filas afectadas
+LANGUAGE plpgsql
+AS $$
+declare
+  deleted_count integer;
+begin
+  delete from public.movimiento_concepto where id_movimiento_concepto = p_id;
+  get diagnostics deleted_count = row_count;
+  return deleted_count;
+end;
+$$;
+
+-- =========================================================
+-- 16. Función RPC: unmark_movimiento_espontaneo_by_id
+-- Elimina un registro de la tabla movimiento_espontaneo por ID
+-- =========================================================
+CREATE OR REPLACE FUNCTION public.unmark_movimiento_espontaneo_by_id(
+    p_id integer
+)
+RETURNS integer -- Retorna el número de filas afectadas
+LANGUAGE plpgsql
+AS $$
+declare
+  deleted_count integer;
+begin
+  delete from public.movimiento_espontaneo where id_movimiento_espontaneo = p_id;
+  get diagnostics deleted_count = row_count;
+  return deleted_count;
+end;
+$$;
+
+-- =========================================================
+-- 17. Función RPC: update_concepto
+-- Actualiza los detalles de un concepto existente
+-- =========================================================
+CREATE OR REPLACE FUNCTION public.update_concepto(
+    p_id_concepto integer,
+    p_nombre_concepto text,
+    p_tipo boolean,
+    p_periodo text,
+    p_activo boolean
+)
+RETURNS SETOF public.concepto -- Retorna la fila actualizada
+LANGUAGE sql
+AS $$
+    UPDATE public.concepto
+    SET 
+        nombre_concepto = p_nombre_concepto,
+        tipo = p_tipo,
+        periodo = p_periodo,
+        activo = p_activo
+    WHERE concepto.id_concepto = p_id_concepto
+    RETURNING 
+        concepto.id_concepto,
+        concepto.correo_cuenta::TEXT,
+        concepto.nombre_concepto::TEXT,
+        concepto.tipo,
+        concepto.periodo::TEXT,
+        concepto.activo;
+$$;
+
+-- =========================================================
+-- 18. Función RPC: update_objetivo_by_id
+-- Actualiza el nombre y el monto objetivo
+-- =========================================================
+CREATE OR REPLACE FUNCTION public.update_objetivo_by_id(
+    p_id integer,
+    p_nombre text,
+    p_monto_objetivo numeric
+)
+RETURNS SETOF public.objetivo -- Retorna la fila actualizada
+LANGUAGE plpgsql
+AS $$
+begin
+  return query
+  update public.objetivo
+  set nombre = p_nombre,
+      monto_objetivo = p_monto_objetivo
+  where id_objetivo = p_id
+  returning id_objetivo, correo_cuenta, nombre, fecha_objetivo, monto_objetivo, estado, numero_objetivo;
+end;
+$$;
+
+-- =========================================================
+-- 19. Función RPC: update_objetivo_estado_by_id
+-- Actualiza el estado de un objetivo
+-- =========================================================
+CREATE OR REPLACE FUNCTION public.update_objetivo_estado_by_id(
+    p_id integer,
+    p_estado text
+)
+RETURNS integer -- Retorna el número de filas actualizadas
+LANGUAGE plpgsql
+AS $$
+declare
+  updated_count integer;
+begin
+  update public.objetivo
+  set estado = p_estado
+  where id_objetivo = p_id;
+  get diagnostics updated_count = row_count;
+  return updated_count;
+end;
+$$;
+
+-- =========================================================
+-- 20. Función RPC: update_user_account_data
+-- Actualiza la información del usuario y/o la cuenta asociada
+-- =========================================================
+CREATE OR REPLACE FUNCTION public.update_user_account_data(
+    p_email text,
+    p_nombre_usuario text default NULL,
+    p_ubicacion text default NULL,
+    p_lugar_trabajo text default NULL,
+    p_nombre_cuenta text default NULL
+)
+RETURNS SETOF public.get_user_account_data
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    -- Actualizar usuario si hay datos (COALESCE mantiene el valor antiguo si el nuevo es NULL)
+    IF p_nombre_usuario IS NOT NULL OR p_ubicacion IS NOT NULL OR p_lugar_trabajo IS NOT NULL THEN
+        UPDATE public.usuario
+        SET 
+            nombre_usuario = COALESCE(p_nombre_usuario, public.usuario.nombre_usuario),
+            ubicacion = COALESCE(p_ubicacion, public.usuario.ubicacion),
+            lugar_trabajo = COALESCE(p_lugar_trabajo, public.usuario.lugar_trabajo)
+        WHERE public.usuario.correo = p_email;
+    END IF;
+    
+    -- Actualizar cuenta si hay datos
+    IF p_nombre_cuenta IS NOT NULL THEN
+        UPDATE public.cuenta
+        SET nombre_cuenta = p_nombre_cuenta
+        WHERE public.cuenta.correo_usuario = p_email;
+    END IF;
+    
+    -- Retornar datos actualizados usando la función de consulta
+    RETURN QUERY
+    SELECT * FROM public.get_user_account_data(p_email);
+END;
+$$;
+
+-- =========================================================
+-- 21. Función RPC: update_user_password
+-- Actualiza la contraseña de un usuario existente
+-- =========================================================
+CREATE OR REPLACE FUNCTION public.update_user_password(
+    p_correo text,
+    p_nueva_contrasena text
+)
+RETURNS boolean
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    -- Verificar si el usuario existe
+    IF NOT EXISTS(SELECT 1 FROM public.usuario WHERE correo = p_correo) THEN
+        RETURN false;
+    END IF;
+    
+    -- Actualizar contraseña
+    UPDATE public.usuario
+    SET contrasena = p_nueva_contrasena
+    WHERE correo = p_correo;
+    
+    RETURN true;
+    
+EXCEPTION
+    WHEN OTHERS THEN
+        RETURN false;
+END;
+$$;
+
+-- =========================================================
+-- 22. Función RPC: insert_movimiento_concepto
+-- Inserta un movimiento y retorna la fila creada.
+-- =========================================================
+CREATE OR REPLACE FUNCTION public.insert_movimiento_concepto(
+    p_correo_cuenta text,
+    p_contador integer,
+    p_fecha_operacion date,
+    p_monto numeric,
+    p_id_concepto integer
+)
+RETURNS SETOF public.movimiento_concepto -- Retorna la estructura nativa de la tabla
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RETURN QUERY
+  INSERT INTO public.movimiento_concepto (correo_cuenta, contador, fecha_operacion, monto, id_concepto)
+  VALUES (p_correo_cuenta, p_contador, p_fecha_operacion, p_monto, p_id_concepto)
+  RETURNING
+    -- 1. id_movimiento_concepto (int4)
+    movimiento_concepto.id_movimiento_concepto,
+    -- 2. correo_cuenta (varchar)
+    movimiento_concepto.correo_cuenta,
+    -- 3. contador (int4)
+    movimiento_concepto.contador,
+    -- 4. fecha_operacion (date)
+    movimiento_concepto.fecha_operacion,
+    -- 5. monto (numeric)
+    movimiento_concepto.monto,
+    -- 6. id_concepto (int4)
+    movimiento_concepto.id_concepto;
+END;
+$$;
+
+-- =========================================================
+-- 23. Función RPC: insert_movimiento_concepto_rpc
+-- Wrapper RPC que parsea JSON y llama a la función base
+-- =========================================================
+CREATE OR REPLACE FUNCTION public.insert_movimiento_concepto_rpc(
+    p_json jsonb
+)
+RETURNS SETOF public.movimiento_concepto
+LANGUAGE plpgsql
+AS $$
+declare
+  v_correo text := coalesce(p_json->>'p_correo_cuenta', p_json->>'correo_cuenta');
+  v_contador int := (coalesce(p_json->>'p_contador', p_json->>'contador'))::int;
+  v_fecha date := (coalesce(p_json->>'p_fecha_operacion', p_json->>'fecha_operacion'))::date;
+  v_monto numeric := (coalesce(p_json->>'p_monto', p_json->>'monto'))::numeric;
+  v_id_concepto int := (coalesce(p_json->>'p_id_concepto', p_json->>'id_concepto'))::int;
+begin
+  return query
+  select * from public.insert_movimiento_concepto(
+    v_correo,
+    v_contador,
+    v_fecha,
+    v_monto,
+    v_id_concepto
+  );
+end;
+$$;
+
+-- =========================================================
+-- 24. Función Base: insert_movimiento_espontaneo
+-- Inserta un movimiento espontáneo y retorna la fila creada
+-- =========================================================
+CREATE OR REPLACE FUNCTION public.insert_movimiento_espontaneo(
+    p_correo_cuenta text,
+    p_contador integer,
+    p_fecha_operacion date,
+    p_motivo text,
+    p_tipo boolean,
+    p_monto numeric
+)
+RETURNS SETOF public.movimiento_espontaneo
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RETURN QUERY
+  INSERT INTO public.movimiento_espontaneo (correo_cuenta, contador, fecha_operacion, motivo, tipo, monto)
+  VALUES (p_correo_cuenta, p_contador, p_fecha_operacion, p_motivo, p_tipo, p_monto)
+  RETURNING
+    -- Se listan las columnas en el orden físico exacto de la tabla.
+    movimiento_espontaneo.id_movimiento_espontaneo,
+    movimiento_espontaneo.correo_cuenta,
+    movimiento_espontaneo.contador,
+    movimiento_espontaneo.fecha_operacion,
+    movimiento_espontaneo.motivo,
+    movimiento_espontaneo.tipo,
+    movimiento_espontaneo.monto;
+END;
+$$;
+
+-- =========================================================
+-- 25. Función RPC: insert_movimiento_espontaneo_rpc
+-- Wrapper RPC que parsea JSON y llama a la función base
+-- =========================================================
+CREATE OR REPLACE FUNCTION public.insert_movimiento_espontaneo_rpc(
+    p_json jsonb
+)
+RETURNS SETOF public.movimiento_espontaneo
+LANGUAGE plpgsql
+AS $$
+declare
+  v_correo text := coalesce(p_json->>'p_correo_cuenta', p_json->>'correo_cuenta');
+  v_contador int := (coalesce(p_json->>'p_contador', p_json->>'contador'))::int;
+  v_fecha date := (coalesce(p_json->>'p_fecha_operacion', p_json->>'fecha_operacion'))::date;
+  v_motivo text := coalesce(p_json->>'p_motivo', p_json->>'motivo');
+  v_tipo_text text := coalesce(p_json->>'p_tipo', p_json->>'tipo');
+  v_tipo boolean := case lower(coalesce(v_tipo_text, '')) when 'true' then true when 'false' then false else null end;
+  v_monto numeric := (coalesce(p_json->>'p_monto', p_json->>'monto'))::numeric;
+begin
+  return query
+  select * from public.insert_movimiento_espontaneo(
+    v_correo,
+    v_contador,
+    v_fecha,
+    v_motivo,
+    v_tipo,
+    v_monto
+  );
+end;
+$$;
