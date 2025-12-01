@@ -1,6 +1,6 @@
-# Daily Input App - Registro de Finanzas Personales
+# Aplicación PLanify - Registro de Finanzas
 
-Bienvenido al proyecto **Daily Input App**. Esta es una aplicación sencilla para registrar tus ingresos y gastos diarios, utilizando **React** y una base de datos **Supabase** para gestionar los movimientos.
+Bienvenido al proyecto **Planify**. Esta es una aplicación sencilla para registrar tus ingresos y gastos diarios, utilizando **React** y una base de datos **Supabase** para gestionar los movimientos.
 
 Este documento te guiará paso a paso para que puedas descargar y ejecutar la aplicación en tu propio computador, incluso si nunca lo has hecho antes.
 
